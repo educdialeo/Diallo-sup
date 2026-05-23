@@ -1,0 +1,37 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Environnement / secrets ---
+.env
+.env.local
+*.key
+*.pem
+
+# --- Base de données SQLite (données locales, jamais committées) ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+
+# --- Node / frontend (toolchain scaffoldé au chantier N1) ---
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-error.log*
+
+# --- macOS ---
+.DS_Store
