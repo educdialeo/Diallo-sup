@@ -115,8 +115,7 @@ curl http://127.0.0.1:8000/health
 ```
 
 - Documentation interactive de l'API : <http://127.0.0.1:8000/docs>
-- `POST /api/ingest` répond **501 Not Implemented** (stub : futur point d'entrée
-  des push des Mac mini clients).
+- Endpoints d'ingestion (auth par API key) : voir la section [API](#api) ci-dessous.
 
 ---
 
@@ -152,15 +151,58 @@ make front-test   # frontend (vitest)
 
 ---
 
+## API
+
+Authentification des Mac mini clients : **API key 256 bits par établissement**,
+transmise en `Authorization: Bearer <clé>`. La console ne stocke que le hash
+SHA-256 de la clé ; la clé en clair n'est renvoyée **qu'une seule fois**, à la
+création de l'établissement.
+
+| Méthode & route | Auth | Description |
+|---|---|---|
+| `GET /health` | — | Sonde de liveness |
+| `POST /api/establishments` | ⚠️ admin¹ | Crée un établissement, renvoie l'API key en clair (1×) → 201 |
+| `POST /api/ingest` | Bearer | Reçoit un heartbeat et le persiste → 202 |
+| `GET /api/establishments/{id}/heartbeats` | Bearer² | Relit les N derniers heartbeats (`?limit=`, défaut 50, max 1000), tri `received_at` desc → 200 |
+
+¹ Non protégé en local pour l'instant — **doit passer derrière Cloudflare Access
+avant toute exposition externe** (cf [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.1).
+² Un établissement ne peut relire que **ses propres** heartbeats (sinon 403).
+
+### Exemple cURL end-to-end
+
+```bash
+# 1) Créer un établissement (note l'api_key : non récupérable ensuite)
+curl -s -X POST http://127.0.0.1:8000/api/establishments \
+  -H "Content-Type: application/json" -d '{"name": "École Saint-Pierre"}'
+# → {"id":1,"name":"École Saint-Pierre","api_key":"<CLÉ_EN_CLAIR>","created_at":"..."}
+
+KEY="<CLÉ_EN_CLAIR>"
+
+# 2) Pousser un heartbeat
+curl -s -X POST http://127.0.0.1:8000/api/ingest \
+  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+  -d '{"type":"heartbeat","timestamp":"2026-05-23T14:30:00Z","status":"ok"}'
+# → 202  {"received_at":"..."}
+
+# 3) Relire ses heartbeats
+curl -s -H "Authorization: Bearer $KEY" \
+  "http://127.0.0.1:8000/api/establishments/1/heartbeats?limit=50"
+# → 200  [{"id":1,"timestamp":"...","status":"ok","received_at":"..."}]
+```
+
+---
+
 ## Structure du projet
 
 ```
 Diallo-sup/
 ├── app/
 │   ├── main.py            # app factory FastAPI + lifespan (init DB) + service du SPA
-│   ├── api/               # routers (health, ingest)
-│   ├── core/              # config + base SQLAlchemy
-│   ├── models/            # modèles ORM (etablissements)
+│   ├── api/               # routers (health, establishments, ingest) + deps (auth)
+│   ├── core/              # config + base SQLAlchemy + security (API keys)
+│   ├── models/            # modèles ORM (etablissements, heartbeats)
+│   ├── schemas/           # schémas Pydantic (I/O API)
 │   └── services/          # logique métier (à venir)
 ├── frontend/              # SPA React + TS + Vite + Tailwind (ossature)
 │   └── src/               # main, App (routes), components, pages, hooks, lib

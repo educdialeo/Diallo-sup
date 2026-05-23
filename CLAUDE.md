@@ -38,10 +38,14 @@ supervision multi-établissements de la flotte Dialeo.
   fallback SPA) si le build existe — inerte en dev/CI/tests.
 - **Communication** : REST (push des Mac mini clients vers `/api/ingest`) + SSE
   (UI live).
-- **Auth client → console** : API key statique 256 bits par Mac mini ; la console
-  ne stocke que le **hash SHA-256** (`api_key_hash`).
+- **Auth client → console** : API key 256 bits/Mac mini (`secrets.token_urlsafe(32)`),
+  console stocke le **hash SHA-256** (`app/core/security.py`). Vérif via dépendance
+  `get_current_etablissement` (`app/api/deps.py`, schéma Bearer → 401). Cloisonnement
+  par établissement → 403. ⚠️ `POST /api/establishments` est admin et **non protégé**
+  pour l'instant (à mettre derrière Cloudflare Access — cf ARCHITECTURE §7.1).
 - **Stockage** : SQLite, rétention 90 j, purge nocturne. Tables créées via
-  `create_all` pour l'instant ; **Alembic** à introduire au chantier N1.
+  `create_all` pour l'instant ; **Alembic** à introduire quand le schéma N1 se fige
+  (caveat : `create_all` n'altère pas une table existante).
 - **Audit** : familles A1-A5 (cf `docs/ARCHITECTURE.md` §7.3) — non implémenté.
 
 > Toutes les décisions actées sont dans **`docs/ARCHITECTURE.md`** ; le phasage
@@ -59,11 +63,21 @@ supervision multi-établissements de la flotte Dialeo.
   (défaut → `/dashboard`), charte Dialeo, `HealthIndicator` (sonde `/health`)
 - FastAPI sert le build en prod · 1 test Vitest vert · backend toujours 3 verts
 
+**Chantier 3 phase 3.1 — ingest API (`v0.3.0-ingest-api`)** :
+- `POST /api/establishments` (201, renvoie l'API key en clair 1×) · auth Bearer
+- `POST /api/ingest` **réel** (202, persiste dans table `heartbeats`, payload JSON)
+- `GET /api/establishments/{id}/heartbeats` (200, `?limit` 50/max 1000, tri desc, 403 cross-étab)
+- Table `heartbeats` (id, etablissement_id FK, timestamp, status, payload JSON, received_at)
+- 10 tests pytest verts. Phases suivantes : 3.2 payload N1 exhaustif · 3.3 client M4 · 3.4 daemon launchd
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au
   chantier N1. L'ossature de navigation existe, mais les pages sont des placeholders.
-- Le collecteur Mac mini client → vit dans le repo **Dialeo principal**, pas ici.
+- **Payload N1 exhaustif** (10 données) → phase 3.2. Phase 3.1 ne gère que le type
+  `heartbeat` minimal (le corps complet est déjà conservé en JSON dans `heartbeats.payload`).
+- Le **client Python M4** (phase 3.3) et le **daemon launchd** (phase 3.4) → repo
+  **Dialeo principal**, pas ici. Ne pas toucher au repo `educdialeo/dialeo`.
 - Cloudflare Tunnel/Access, signature crypto N2, SSE temps réel, auth utilisateur
   applicative → chantiers séparés (cf ROADMAP).
 

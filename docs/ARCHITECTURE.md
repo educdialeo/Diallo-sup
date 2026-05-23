@@ -177,12 +177,30 @@ Modèle **hybride** :
   sont pensés **multi-utilisateurs dès la conception** (pas de raccourci bloquant
   une montée ultérieure).
 
+> ⚠️ **Dette technique connue (phase 3.1)** : `POST /api/establishments` (création
+> d'établissement + génération de l'API key) est un endpoint **admin/console**,
+> aujourd'hui **non protégé** en local. Il **doit** être placé derrière Cloudflare
+> Access **avant toute exposition externe**. Tant que la console n'est pas exposée
+> (pas de tunnel connecté), le risque reste contenu au LAN.
+
 ### 7.2 Authentification Mac mini client → console
 
 - **API key statique 256 bits par Mac mini**, générée par la console à la
   création d'un établissement, **copiée manuellement** dans le `.env` du Mac mini
   client.
 - La console ne stocke que le **hash SHA-256** de la clé (`api_key_hash`).
+
+**Implémentation (phase 3.1)** :
+
+- Génération : `secrets.token_urlsafe(32)` (256 bits d'entropie, ~43 caractères
+  URL-safe). Hash : `hashlib.sha256(...).hexdigest()`. Voir `app/core/security.py`.
+- La clé en clair est renvoyée **une seule fois** (réponse 201 de
+  `POST /api/establishments`) ; elle n'est ni stockée, ni reloggée.
+- Vérification : dépendance FastAPI `get_current_etablissement`
+  (`app/api/deps.py`) — schéma `HTTPBearer`, hash de la clé reçue puis lookup sur
+  `api_key_hash` (colonne indexée), exige `status == "active"`, sinon **401**.
+- Cloisonnement : un établissement ne peut relire que **ses propres** données
+  (sinon **403**) — cf `GET /api/establishments/{id}/heartbeats`.
 
 ### 7.3 Audit trail
 

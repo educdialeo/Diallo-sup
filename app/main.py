@@ -8,7 +8,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import health, ingest
+from app.api import establishments, health, ingest
 from app.core.db import init_db
 
 # Build statique du SPA (genere par `npm run build` dans frontend/).
@@ -55,6 +55,7 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.include_router(health.router)
+    app.include_router(establishments.router)
     app.include_router(ingest.router)
     _mount_spa(app)
     return app

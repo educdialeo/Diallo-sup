@@ -69,3 +69,17 @@ Prérequis transverses à la phase N2 :
   viendra quand le besoin réel apparaît).
 - Montée en charge **50+ établissements** (l'architecture est dimensionnée pour, la
   validation se fera à l'usage).
+
+---
+
+## Dette technique connue
+
+À traiter au bon moment, sans urgence à ce stade :
+
+- **`POST /api/establishments` non protégé** (phase 3.1) → doit passer derrière
+  **Cloudflare Access** avant toute exposition externe (cf ARCHITECTURE §7.1).
+- **Timestamps SQLite sans fuseau** (phase 3.1) → les datetimes sont en UTC mais
+  renvoyés sans suffixe `Z` (limitation SQLite). Donnée correcte, étiquetage à
+  normaliser si un client en a besoin.
+- **Migrations** → encore en `create_all` ; introduire **Alembic** quand le schéma
+  N1 se fige (`create_all` n'altère pas les tables existantes).
