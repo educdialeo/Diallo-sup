@@ -7,21 +7,17 @@ from pydantic import BaseModel, ConfigDict
 
 
 class HeartbeatIn(BaseModel):
-    """Corps d'un push de heartbeat (phase 3.1 : type minimal).
+    """Corps d'un push de heartbeat (type minimal, membre de l'union d'ingestion).
 
-    Le payload N1 exhaustif (10 donnees) sera introduit en phase 3.2 ; la table
-    `heartbeats` conserve deja le corps complet en JSON pour l'absorber.
+    Conserve depuis la phase 3.1 pour la compatibilite ascendante. Le payload N1
+    exhaustif (10 types) vit dans `app/schemas/ingest.py`.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     type: Literal["heartbeat"] = "heartbeat"
     timestamp: datetime
     status: str
-
-
-class HeartbeatAccepted(BaseModel):
-    """Accuse de reception d'un heartbeat."""
-
-    received_at: datetime
 
 
 class HeartbeatOut(BaseModel):

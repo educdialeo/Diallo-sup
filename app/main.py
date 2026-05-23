@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app import __version__
 from app.api import establishments, health, ingest
+from app.api.errors import register_exception_handlers
 from app.core.db import init_db
 
 # Build statique du SPA (genere par `npm run build` dans frontend/).
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
         summary="Backend de supervision multi-etablissements (repo technique : Diallo-sup).",
         lifespan=lifespan,
     )
+    register_exception_handlers(app)
     app.include_router(health.router)
     app.include_router(establishments.router)
     app.include_router(ingest.router)

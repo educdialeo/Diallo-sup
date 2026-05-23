@@ -162,8 +162,33 @@ création de l'établissement.
 |---|---|---|
 | `GET /health` | — | Sonde de liveness |
 | `POST /api/establishments` | ⚠️ admin¹ | Crée un établissement, renvoie l'API key en clair (1×) → 201 |
-| `POST /api/ingest` | Bearer | Reçoit un heartbeat et le persiste → 202 |
+| `POST /api/ingest` | Bearer | Reçoit un push (10 types, voir ci-dessous) et le persiste → 202 |
 | `GET /api/establishments/{id}/heartbeats` | Bearer² | Relit les N derniers heartbeats (`?limit=`, défaut 50, max 1000), tri `received_at` desc → 200 |
+
+### Types d'ingestion (`POST /api/ingest`)
+
+Endpoint unique, dispatch sur le champ `type` (union discriminée, validation Pydantic
+stricte). Tout push est consigné dans `raw_pushes` (log brut) ; certains types
+alimentent en plus une table dédiée :
+
+| `type` | Table dédiée | Contenu |
+|---|---|---|
+| `heartbeat` | `heartbeats` | `status` (compat phase 3.1) |
+| `sante_systeme` | — (raw) | santé Mac mini + stats hardware |
+| `ollama_status` | — (raw) | modèles chargés, latence, RAM |
+| `dialeo_status` | — (raw) | version, statut uvicorn, modes actifs |
+| `sessions_live` | `sessions` (`kind=live`) | classes/élèves connectés, modes en cours |
+| `sessions_historiques` | `sessions` (`kind=historique`) | agrégats jour/semaine/mois |
+| `incidents_moderation` | `incidents` | compteurs de refus (blacklist / llamaguard / system prompt) |
+| `reports` | `reports` | reports **anonymisés** (cf ci-dessous) |
+| `logs_critiques` | — (raw) | logs `ERROR` / `CRITICAL` |
+| `inventaire` | — (raw) | modèle Mac mini, macOS, sièges, formule |
+
+**Reports — anonymisation stricte (RGPD by design)** : seuls sont acceptés
+`date_jour` (jour près), `question`, `reponse`, `mode_pedagogique`,
+`niveau_scolaire` (liste 1+ parmi CP→3e), `note_enseignant`. Tout champ identifiant
+(prénom, nom, identifiants de session / classe / connexion, établissement…) est
+**refusé avec un 400 explicite**.
 
 ¹ Non protégé en local pour l'instant — **doit passer derrière Cloudflare Access
 avant toute exposition externe** (cf [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7.1).

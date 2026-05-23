@@ -149,12 +149,25 @@ Modèle **hybride** :
 ## 6. Stockage & rétention
 
 - **SQLite**, stockage **exhaustif** des données remontées.
-- **Rétention 90 jours**, avec **purge nocturne** des données expirées.
-- Schéma amené à croître : `etablissements` (posée), puis `sessions`,
-  `incidents`, `reports`, `logs`, `hardware_stats`, `inventaire`, `audit_log`…
-- Fondation : tables créées via `Base.metadata.create_all` au démarrage.
-  **Alembic** sera introduit dès que le schéma se stabilise (premières tables N1)
-  pour gérer les migrations versionnées.
+- **Rétention 90 jours**, avec **purge nocturne** des données expirées (chantier séparé).
+- Tables créées via `Base.metadata.create_all` au démarrage. **Alembic** sera
+  introduit quand le schéma N1 se fige (cf dette technique, ROADMAP).
+
+### Stockage de l'ingestion — hybride (phase 3.2)
+
+- **`raw_pushes`** : log **brut universel** — *tout* push y est consigné
+  intégralement (`payload` JSON), quel que soit son type. Sert l'audit et le replay.
+- **Tables dédiées** pour les données fréquemment requêtées : `heartbeats`
+  (compat 3.1), `sessions` (live + historiques via colonne `kind`), `incidents`
+  (compteurs de modération), `reports` (anonymisés).
+- Les autres types (`sante_systeme`, `ollama_status`, `dialeo_status`,
+  `logs_critiques`, `inventaire`) restent dans `raw_pushes` uniquement —
+  requêtables en JSON SQLite, promus en table dédiée plus tard si nécessaire.
+- Dispatch par le champ `type` (union discriminée Pydantic), dans
+  `app/services/ingest.py`.
+
+> Dette : `heartbeats` est en **double écriture** avec `raw_pushes` (compat 3.1) ;
+> fusion possible plus tard (cf ROADMAP).
 
 ### Table `etablissements` (posée au chantier de fondation)
 
@@ -227,6 +240,20 @@ Cinq familles d'événements à tracer :
   requête**. Les autres familles peuvent porter un contexte structuré (JSON).
 
 > Non implémenté au chantier de fondation : seule la stratégie est figée ici.
+
+### 7.4 Anonymisation des reports (RGPD by design — phase 3.2)
+
+L'anonymisation est faite **à la source** (côté Mac mini client, phase 3.3). Côté
+console, on **garantit qu'aucune donnée identifiante ne peut entrer** :
+
+- **Champs autorisés (seuls)** : `date_jour` (jour près, jamais l'heure),
+  `question`, `reponse`, `mode_pedagogique`, `niveau_scolaire` (liste 1+ valeurs
+  parmi CP→3e), `note_enseignant`.
+- **Champs interdits** (prénom, nom enseignant, ID/code session, ID connexion,
+  ID classe, nom établissement, e-mail, IP…) : le schéma `ReportItem` est en
+  `extra="forbid"` → tout champ non déclaré est **rejeté avec un HTTP 400
+  explicite** (`app/api/errors.py`). Rien d'identifiant n'atteint la base.
+- La table `reports` ne **possède pas de colonne** pour ces champs interdits.
 
 ---
 

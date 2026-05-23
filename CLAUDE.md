@@ -65,10 +65,18 @@ supervision multi-établissements de la flotte Dialeo.
 
 **Chantier 3 phase 3.1 — ingest API (`v0.3.0-ingest-api`)** :
 - `POST /api/establishments` (201, renvoie l'API key en clair 1×) · auth Bearer
-- `POST /api/ingest` **réel** (202, persiste dans table `heartbeats`, payload JSON)
 - `GET /api/establishments/{id}/heartbeats` (200, `?limit` 50/max 1000, tri desc, 403 cross-étab)
-- Table `heartbeats` (id, etablissement_id FK, timestamp, status, payload JSON, received_at)
-- 10 tests pytest verts. Phases suivantes : 3.2 payload N1 exhaustif · 3.3 client M4 · 3.4 daemon launchd
+
+**Chantier 3 phase 3.2 — payload N1 exhaustif (`v0.4.0-payload-n1`)** :
+- `POST /api/ingest` accepte **10 types** (union discriminée sur `type`, validation
+  stricte `extra="forbid"`) : heartbeat, sante_systeme, ollama_status, dialeo_status,
+  sessions_live, sessions_historiques, incidents_moderation, reports, logs_critiques, inventaire
+- Stockage **hybride** : `raw_pushes` (log brut de TOUS les push) + tables dédiées
+  `heartbeats`, `sessions` (kind live/historique), `incidents`, `reports`. Les autres
+  types restent en raw_pushes seul. Dispatch dans `app/services/ingest.py`.
+- **Reports anonymisés** : champ identifiant → **400** (`app/api/errors.py`, cf ARCHITECTURE §7.4).
+  `niveau_scolaire` = liste 1+ parmi CP→3e (enum `NiveauScolaire`).
+- 28 tests pytest verts. Phases suivantes : 3.3 client M4 · 3.4 daemon launchd (repo Dialeo principal)
 
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
