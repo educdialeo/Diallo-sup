@@ -26,10 +26,11 @@ venv/
 *.db-shm
 data/
 
-# --- Node / frontend (toolchain scaffoldé au chantier N1) ---
+# --- Node / frontend ---
 node_modules/
 frontend/dist/
 frontend/.vite/
+*.tsbuildinfo
 npm-debug.log*
 yarn-error.log*
 

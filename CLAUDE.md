@@ -19,19 +19,23 @@ supervision multi-établissements de la flotte Dialeo.
 
 ## Stack & conventions
 
-- **Python 3.11+** (env de référence : 3.13 via Homebrew). venv dans `.venv/`.
-- **FastAPI + SQLAlchemy 2.0 + SQLite.** Pydantic v2 / pydantic-settings.
+- **Backend** : Python 3.11+ (réf 3.13 via Homebrew, venv `.venv/`). FastAPI +
+  SQLAlchemy 2.0 + SQLite. Pydantic v2 / pydantic-settings. Lint ruff, tests pytest.
+- **Frontend** : React 19 + TS + Vite 7 + Tailwind v4 + React Router 7, dans
+  `frontend/`. Tests Vitest, lint ESLint. Inter bundlé (`@fontsource`), pas de CDN.
 - **Conventional Commits** (`feat:`, `fix:`, `chore:`, `docs:`…).
-- **Lint : ruff** (`make lint`). **Tests : pytest** (`make test`).
-- Raccourcis : `make install` / `make dev` / `make test` / `make lint`.
-- Avant de pousser : `make test` **et** `make lint` doivent passer.
+- Raccourcis : `make install|dev|test|lint` (backend) · `make front-install|front-dev|front-build|front-test|front-lint` (frontend).
+- Avant de pousser : `make test` + `make lint` **et** `make front-test` + `make front-lint` doivent passer.
 
 ## Architecture en bref
 
 - **Déploiement** : FastAPI sert le build statique du SPA (pas de Caddy), derrière
   **Cloudflare Tunnel + Access (Email OTP)**. Origine locale en clair sur
   `127.0.0.1`.
-- **Frontend** : React + TS + Vite + Tailwind — **pas encore scaffoldé** (chantier N1).
+- **Frontend** : ossature React + TS + Vite + Tailwind posée (layout, sidebar,
+  6 routes placeholder, charte Dialeo). En dev : Vite :5173 proxifie `/api`,`/health`
+  vers uvicorn :8000. En prod : `app/main.py` sert `frontend/dist/` (StaticFiles +
+  fallback SPA) si le build existe — inerte en dev/CI/tests.
 - **Communication** : REST (push des Mac mini clients vers `/api/ingest`) + SSE
   (UI live).
 - **Auth client → console** : API key statique 256 bits par Mac mini ; la console
@@ -45,17 +49,20 @@ supervision multi-établissements de la flotte Dialeo.
 
 ## État actuel
 
-**Chantier de fondation (23 mai 2026).** Posé :
-
+**Chantier de fondation (23 mai 2026, `v0.1.0-scaffold`)** :
 - `/health` → `{"status": "ok", "service": "Diallo-sup console"}`
 - `POST /api/ingest` → **501** (stub, futur point d'entrée des push clients)
-- Table `etablissements` (id, name, api_key_hash, status, created_at)
-- 3 tests pytest verts
-- Tag `v0.1.0-scaffold`
+- Table `etablissements` (id, name, api_key_hash, status, created_at) · 3 tests pytest verts
+
+**Chantier 2 — scaffolding frontend (`v0.2.0-frontend-scaffold`)** :
+- Ossature SPA : Layout (sidebar fixe + breadcrumb), 6 routes placeholder
+  (défaut → `/dashboard`), charte Dialeo, `HealthIndicator` (sonde `/health`)
+- FastAPI sert le build en prod · 1 test Vitest vert · backend toujours 3 verts
 
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
-- Les écrans / le frontend (arrivent feature par feature au chantier N1).
+- Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au
+  chantier N1. L'ossature de navigation existe, mais les pages sont des placeholders.
 - Le collecteur Mac mini client → vit dans le repo **Dialeo principal**, pas ici.
 - Cloudflare Tunnel/Access, signature crypto N2, SSE temps réel, auth utilisateur
   applicative → chantiers séparés (cf ROADMAP).

@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+
+/* Tokens de la charte Dialeo (config CSS-first Tailwind v4). */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Accent bleu craie (#7DB8E8 = craie-400). */
+  --color-craie-50: #f0f7fd;
+  --color-craie-100: #e0eff9;
+  --color-craie-300: #aed5f1;
+  --color-craie-400: #7db8e8;
+  --color-craie-500: #5aa0dd;
+  --color-craie-600: #3f82c2;
+
+  /* Couleurs fonctionnelles des statuts. */
+  --color-sauge-100: #e6f0e9;
+  --color-sauge-500: #6f9e7a; /* vert sauge — OK */
+  --color-chaleur-100: #fbecdd;
+  --color-chaleur-500: #e08a3c; /* orange chaleureux — warning */
+  --color-brique-100: #f6e1db;
+  --color-brique-500: #b4452f; /* rouge brique — critique */
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-800 font-sans antialiased;
+}

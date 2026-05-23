@@ -120,11 +120,34 @@ curl http://127.0.0.1:8000/health
 
 ---
 
+## Frontend (SPA)
+
+Ossature React + TypeScript + Vite + TailwindCSS posée au chantier 2 (layout,
+navigation, charte Dialeo — écrans réels au chantier N1). Détails :
+[frontend/README.md](frontend/README.md).
+
+**Dev — 2 process** (HMR côté front, vraie API côté back) :
+
+```bash
+make dev            # terminal 1 : backend uvicorn :8000
+make front-install  # 1re fois seulement
+make front-dev      # terminal 2 : Vite :5173 (proxy /api,/health -> :8000)
+```
+
+**Prod — FastAPI sert le build** :
+
+```bash
+make front-build    # génère frontend/dist/
+make dev            # http://127.0.0.1:8000 sert le SPA + l'API
+```
+
+---
+
 ## Tests
 
 ```bash
-make test
-# ou : .venv/bin/python -m pytest
+make test         # backend  (pytest)
+make front-test   # frontend (vitest)
 ```
 
 ---
@@ -134,13 +157,14 @@ make test
 ```
 Diallo-sup/
 ├── app/
-│   ├── main.py            # app factory FastAPI + lifespan (init DB)
+│   ├── main.py            # app factory FastAPI + lifespan (init DB) + service du SPA
 │   ├── api/               # routers (health, ingest)
 │   ├── core/              # config + base SQLAlchemy
 │   ├── models/            # modèles ORM (etablissements)
 │   └── services/          # logique métier (à venir)
-├── frontend/              # SPA — scaffoldé au chantier N1
-├── tests/                 # pytest
+├── frontend/              # SPA React + TS + Vite + Tailwind (ossature)
+│   └── src/               # main, App (routes), components, pages, hooks, lib
+├── tests/                 # pytest (backend)
 ├── docs/                  # ARCHITECTURE.md, ROADMAP.md
 ├── CLAUDE.md              # fiche d'identité projet pour Claude Code
 ├── pyproject.toml
@@ -154,7 +178,8 @@ Diallo-sup/
 - Branche par défaut : **`main`**.
 - Messages de commit : **Conventional Commits** (`feat:`, `fix:`, `chore:`,
   `docs:`…).
-- Avant de pousser : `make test` et `make lint` (ruff) doivent passer.
+- Avant de pousser : `make test` + `make lint` (backend) et `make front-test` +
+  `make front-lint` (frontend) doivent passer.
 - Le périmètre et le phasage sont cadrés dans [docs/ROADMAP.md](docs/ROADMAP.md) ;
   les décisions d'architecture dans [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
