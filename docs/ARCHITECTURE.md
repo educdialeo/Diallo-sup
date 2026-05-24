@@ -161,8 +161,8 @@ Modèle **hybride** :
   (compat 3.1), `sessions` (live + historiques via colonne `kind`), `incidents`
   (compteurs de modération), `reports` (anonymisés).
 - Les autres types (`sante_systeme`, `ollama_status`, `dialeo_status`,
-  `logs_critiques`, `inventaire`) restent dans `raw_pushes` uniquement —
-  requêtables en JSON SQLite, promus en table dédiée plus tard si nécessaire.
+  `logs_critiques`, `inventaire`, `daemon_uvicorn_health`) restent dans `raw_pushes`
+  uniquement — requêtables en JSON SQLite, promus en table dédiée plus tard si nécessaire.
 - Dispatch par le champ `type` (union discriminée Pydantic), dans
   `app/services/ingest.py`.
 

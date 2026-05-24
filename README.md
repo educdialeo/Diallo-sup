@@ -183,6 +183,7 @@ alimentent en plus une table dédiée :
 | `reports` | `reports` | reports **anonymisés** (cf ci-dessous) |
 | `logs_critiques` | — (raw) | logs `ERROR` / `CRITICAL` |
 | `inventaire` | — (raw) | modèle Mac mini, macOS, sièges, formule |
+| `daemon_uvicorn_health` | — (raw) | signal du daemon de surveillance M4 (ping uvicorn 60 s) |
 
 **Reports — anonymisation stricte (RGPD by design)** : seuls sont acceptés
 `date_jour` (jour près), `question`, `reponse`, `mode_pedagogique`,

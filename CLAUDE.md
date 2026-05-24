@@ -78,6 +78,13 @@ supervision multi-établissements de la flotte Dialeo.
   `niveau_scolaire` = liste 1+ parmi CP→3e (enum `NiveauScolaire`).
 - 28 tests pytest verts. Phases suivantes : 3.3 client M4 · 3.4 daemon launchd (repo Dialeo principal)
 
+**Chantier 3 phase 3.4.C — 11e type (`v0.5.0-payload-daemon-health`)** :
+- `daemon_uvicorn_health` (signal du daemon de surveillance M4 : ping uvicorn 60 s)
+  ajouté à l'union discriminée. Stockage `raw_pushes` seul (signal "status", pas de
+  table dédiée). Discriminant `type` + `timestamp` hérité (la spec citait `payload_type`
+  sans timestamp → aligné sur le pattern existant, contrat relayé au repo M4).
+- 35 tests pytest verts. Aucune modif de `store_push` (couvert par `case _:`).
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au

@@ -134,6 +134,24 @@ class InventaireIn(_IngestBase):
     last_changed_at: datetime | None = None
 
 
+class DaemonUvicornHealthIn(_IngestBase):
+    """Signal du daemon de surveillance autonome (sous-phase 3.4.C).
+
+    Le daemon (cote Mac mini M4) pingue uvicorn local toutes les 60 s et pousse
+    ce signal. Discriminant `type` + `timestamp` herite, conformement au pattern
+    des 10 autres types (la spec initiale citait `payload_type` sans `timestamp`,
+    aligne sur le pattern existant). Stocke dans `raw_pushes` uniquement.
+    """
+
+    type: Literal["daemon_uvicorn_health"]
+    uvicorn_status: Literal["ok", "ko", "unknown"]
+    response_time_ms: int | None = None  # null si ko/unknown
+    http_status: int | None = None  # null si ko/unknown
+    consecutive_failures: int  # 0 si ok, nb de pings ko successifs sinon
+    daemon_uptime_seconds: int
+    last_success_iso: str | None = None  # ISO du dernier ping OK
+
+
 # Union discriminee : FastAPI/Pydantic dispatchent sur la valeur de `type`.
 IngestPayload = Annotated[
     (
@@ -147,6 +165,7 @@ IngestPayload = Annotated[
         | ReportsIn
         | LogsCritiquesIn
         | InventaireIn
+        | DaemonUvicornHealthIn
     ),
     Field(discriminator="type"),
 ]
