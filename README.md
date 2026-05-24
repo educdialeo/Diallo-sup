@@ -219,6 +219,20 @@ curl -s -H "Authorization: Bearer $KEY" \
 
 ---
 
+## Exploitation (production)
+
+Sur le Mac mini DialSup, uvicorn tourne sous **launchd** (LaunchAgent
+`com.diallosup.uvicorn`) : démarrage au boot, redémarrage auto en cas de crash,
+logs vers `~/Library/Logs/diallosup-uvicorn.log`. Installation, bascule, rollback
+et commandes : voir [docs/RESILIENCE.md](docs/RESILIENCE.md).
+
+```bash
+launchctl print gui/501/com.diallosup.uvicorn   # état + PID
+tail -f ~/Library/Logs/diallosup-uvicorn.log     # logs
+```
+
+---
+
 ## Structure du projet
 
 ```

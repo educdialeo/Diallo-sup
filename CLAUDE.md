@@ -85,6 +85,13 @@ supervision multi-établissements de la flotte Dialeo.
   sans timestamp → aligné sur le pattern existant, contrat relayé au repo M4).
 - 35 tests pytest verts. Aucune modif de `store_push` (couvert par `case _:`).
 
+**Chantier 3 sous-phase 3.4.B — launchd uvicorn (`v0.6.0-launchd-uvicorn`)** :
+- uvicorn DialSup sous **launchd** (LaunchAgent `com.diallosup.uvicorn`, uid 501) :
+  RunAtLoad + KeepAlive, logs `~/Library/Logs/diallosup-uvicorn.log`,
+  `WorkingDirectory=/Users/serveur/Projects/Diallo-sup` (critique : base SQLite relative).
+- Source : `ops/com.diallosup.uvicorn.plist`. Procédures (bascule, rollback,
+  bootstrap/bootout/kickstart) : `docs/RESILIENCE.md`. Tests structure du plist (plistlib).
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au

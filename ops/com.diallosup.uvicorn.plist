@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Nom unique du service launchd. -->
+    <key>Label</key>
+    <string>com.diallosup.uvicorn</string>
+
+    <!-- Commande exacte (identique au lancement foreground actuel). -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/serveur/Projects/Diallo-sup/.venv/bin/uvicorn</string>
+        <string>app.main:app</string>
+        <string>--host</string>
+        <string>0.0.0.0</string>
+        <string>--port</string>
+        <string>8000</string>
+    </array>
+
+    <!-- CRUCIAL : la base SQLite est en chemin relatif (./data/diallo_sup.db).
+         WorkingDirectory garantit qu'uvicorn ecrit dans la base prod existante
+         (et qu'un futur .env du repo est bien charge). -->
+    <key>WorkingDirectory</key>
+    <string>/Users/serveur/Projects/Diallo-sup</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Logs en temps reel (pas de bufferisation stdout/stderr). -->
+        <key>PYTHONUNBUFFERED</key>
+        <string>1</string>
+        <!-- Import du package app sans dependre du sys.path implicite. -->
+        <key>PYTHONPATH</key>
+        <string>/Users/serveur/Projects/Diallo-sup</string>
+    </dict>
+
+    <!-- Demarre des le chargement du service + au boot (auto-login serveur). -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Relance automatique si le process s'arrete (crash inclus).
+         NB : pour ARRETER le service, utiliser `launchctl bootout` (un simple
+         kill serait suivi d'une relance immediate). -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Service interactif (priorite d'ordonnancement normale). -->
+    <key>ProcessType</key>
+    <string>Interactive</string>
+
+    <!-- Logs (stdout + stderr fusionnes). -->
+    <key>StandardOutPath</key>
+    <string>/Users/serveur/Library/Logs/diallosup-uvicorn.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/serveur/Library/Logs/diallosup-uvicorn.log</string>
+</dict>
+</plist>
