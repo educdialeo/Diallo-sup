@@ -1,12 +1,14 @@
-"""Genere et persiste les secrets de l'app (JWT_SECRET) dans le .env.
+"""Genere et persiste les secrets de l'app (JWT_SECRET, TOTP_AT_REST_KEY) dans .env.
 
-Idempotent : si la cle existe deja, elle est PRESERVEE (jamais regeneree). Les
-autres lignes du .env (commentaires, autres variables) sont conservees.
+Idempotent : toute cle existante est PRESERVEE (jamais regeneree). Les autres
+lignes du .env (commentaires, autres variables) sont conservees.
 """
 
 import secrets
 import sys
 from pathlib import Path
+
+from cryptography.fernet import Fernet
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 ENV_PATH = _REPO_ROOT / ".env"
@@ -47,25 +49,38 @@ def _write_env(path: Path, mapping: dict[str, str]) -> None:
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def ensure_jwt_secret(env_path: Path = ENV_PATH) -> bool:
-    """Cree JWT_SECRET si absent. Renvoie True si genere, False si deja present."""
+def ensure_secrets(env_path: Path = ENV_PATH) -> dict[str, bool]:
+    """Cree les secrets manquants. Renvoie {nom: True_si_genere_now}."""
     env = _read_env(env_path)
-    if env.get("JWT_SECRET"):
-        return False
-    env["JWT_SECRET"] = secrets.token_urlsafe(32)  # 256 bits
-    _write_env(env_path, env)
-    try:
-        env_path.chmod(0o600)
-    except OSError:
-        pass
-    return True
+    generated: dict[str, bool] = {"JWT_SECRET": False, "TOTP_AT_REST_KEY": False}
+
+    if not env.get("JWT_SECRET"):
+        env["JWT_SECRET"] = secrets.token_urlsafe(32)  # 256 bits
+        generated["JWT_SECRET"] = True
+
+    if not env.get("TOTP_AT_REST_KEY"):
+        env["TOTP_AT_REST_KEY"] = Fernet.generate_key().decode("utf-8")
+        generated["TOTP_AT_REST_KEY"] = True
+
+    if any(generated.values()):
+        _write_env(env_path, env)
+        try:
+            env_path.chmod(0o600)
+        except OSError:
+            pass
+    return generated
+
+
+def ensure_jwt_secret(env_path: Path = ENV_PATH) -> bool:
+    """Alias historique (chantier 4 phase A). Garanti `JWT_SECRET` ET les autres."""
+    return ensure_secrets(env_path)["JWT_SECRET"]
 
 
 def main() -> int:
-    if ensure_jwt_secret():
-        print(f"JWT_SECRET généré dans {ENV_PATH}")
-    else:
-        print(f"JWT_SECRET déjà présent dans {ENV_PATH} (préservé)")
+    result = ensure_secrets()
+    for name, was_generated in result.items():
+        status = "généré" if was_generated else "déjà présent (préservé)"
+        print(f"{name} : {status}")
     return 0
 
 

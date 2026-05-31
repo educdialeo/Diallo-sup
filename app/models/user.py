@@ -30,6 +30,12 @@ class User(Base):
     totp_enrolled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     recovery_codes: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON liste
 
+    # === Lockout (chantier 4 phase B) ===
+    # ⚠️ Le compteur n'est RESET que sur etablissement d'une session complete
+    # (verify-totp OK ou confirm OK), JAMAIS sur succes du mdp seul.
+    failed_login_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # === Audit ===
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=_utcnow, nullable=False

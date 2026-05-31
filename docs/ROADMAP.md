@@ -82,4 +82,22 @@ Prérequis transverses à la phase N2 :
   renvoyés sans suffixe `Z` (limitation SQLite). Donnée correcte, étiquetage à
   normaliser si un client en a besoin.
 - **Migrations** → encore en `create_all` ; introduire **Alembic** quand le schéma
-  N1 se fige (`create_all` n'altère pas les tables existantes).
+  N1 se fige (`create_all` n'altère pas les tables existantes). Workaround
+  ponctuel pour phase 4-B : `app/scripts/migrate_phase_b.py` (ALTER idempotent).
+
+---
+
+## Plateforme / Auth admin (chantier 4)
+
+Suivi détaillé dans `docs/JOURNAL.md`. Pour rappel :
+
+- **Phase A — socle (`v0.7.0-auth-backend-password`, 31 mai 2026)** ✅
+  livré : table `users`, login mdp, cookie session JWT, `/me`, `require_admin`.
+- **Phase B — MFA TOTP (`v0.8.0-auth-mfa-totp`, 31 mai 2026)** ✅
+  livré côté code : login 2 étapes, enrôlement TOTP + URI otpauth, codes de
+  récupération, lockout 5/15 min, chiffrement at-rest. Déploiement DialSup
+  séparé (commande par commande), cf `docs/RESILIENCE.md`.
+- **Phase C — frontend auth (à venir)**
+  écran de login, flux 2 étapes UI, rendu du QR via lib JS, écran "sécurité
+  du compte" (régénération codes de récup). Branchement de `require_admin`
+  sur les vrais écrans N1.

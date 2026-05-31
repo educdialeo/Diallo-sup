@@ -30,17 +30,20 @@ def _login(client, email=_EMAIL, password=_PWD):
 
 # --- login -----------------------------------------------------------------
 
-def test_login_ok_sets_session_cookie_with_correct_attributes(client, admin_user):
+def test_login_ok_sets_preauth_cookie_with_correct_attributes(client, admin_user):
+    """Phase B : /login emet desormais un JWT pre_auth (TTL court), PAS une session."""
     resp = _login(client)
     assert resp.status_code == 200
+    # Phase B : body porte le statut "totp_requis" | "enrolement_requis"
+    assert resp.json()["status"] in ("totp_requis", "enrolement_requis")
     sc = resp.headers["set-cookie"]
     sc_lower = sc.lower()
     assert sc.startswith("diallosup_session=")
     assert "httponly" in sc_lower
     assert "samesite=strict" in sc_lower
     assert "path=/" in sc_lower
-    # Max-Age = SESSION_TTL_HOURS * 3600.
-    assert f"max-age={settings.session_ttl_hours * 3600}" in sc_lower
+    # Max-Age = PREAUTH_TTL_MINUTES * 60 (defaut 5 min).
+    assert f"max-age={settings.preauth_ttl_minutes * 60}" in sc_lower
     # Secure suit la conf (False par défaut en local).
     assert "secure" not in sc_lower
 
@@ -83,14 +86,11 @@ def test_me_without_cookie_is_401(client):
     assert client.get("/api/auth/me").status_code == 401
 
 
-def test_me_with_valid_cookie_returns_user(client, admin_user):
+def test_me_with_preauth_cookie_is_401(client, admin_user):
+    """Phase B : /login pose un cookie pre_auth qui n'ouvre PAS /me. Il faut
+    passer par /verify-totp (couvert dans tests/test_auth_mfa_flow.py)."""
     _login(client)
-    resp = client.get("/api/auth/me")
-    assert resp.status_code == 200
-    body = resp.json()
-    assert body["email"] == _EMAIL
-    assert body["is_active"] is True
-    assert body["id"] == admin_user.id
+    assert client.get("/api/auth/me").status_code == 401
 
 
 def test_me_with_garbled_cookie_is_401(client, admin_user):
@@ -129,14 +129,15 @@ def test_me_rejects_expired_cookie(client, admin_user):
 
 # --- logout ----------------------------------------------------------------
 
-def test_logout_clears_cookie_and_blocks_me(client, admin_user):
+def test_logout_emits_cookie_clear_header(client, admin_user):
+    """Logout efface le cookie via Set-Cookie Max-Age=0 (independant du purpose)."""
     _login(client)
     resp = client.post("/api/auth/logout")
     assert resp.status_code == 204
     sc = resp.headers["set-cookie"]
     assert "diallosup_session=" in sc
     assert "Max-Age=0" in sc
-    # Le cookie doit avoir disparu cote httpx (Set-Cookie Max-Age=0).
+    # /me reste 401 (l'etait deja avec un cookie pre_auth ; doublement vrai apres logout).
     assert client.get("/api/auth/me").status_code == 401
 
 

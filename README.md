@@ -161,7 +161,10 @@ création de l'établissement.
 | Méthode & route | Auth | Description |
 |---|---|---|
 | `GET /health` | — | Sonde de liveness |
-| `POST /api/auth/login` | — | Login admin (`{email, password}`) → cookie de session `diallosup_session` (12 h, HttpOnly, SameSite=Strict) ; **401 générique** sinon |
+| `POST /api/auth/login` | — | Étape 1/2 (`{email, password}`) → cookie **pre_auth** `diallosup_session` (5 min) + `{"status":"totp_requis"|"enrolement_requis"}` ; **401 générique** sinon ; **423** si verrouillé (5 échecs / 15 min) |
+| `POST /api/auth/totp/enroll` | pre_auth ou session | Génère un secret TOTP provisoire (chiffré at-rest) → `{"otpauth_uri":"otpauth://totp/DialSup:..."}` ; **409** si déjà enrôlé |
+| `POST /api/auth/totp/confirm` | pre_auth ou session | Valide le code TOTP → cookie **session** (12 h) + **10 codes de récupération en clair (1×)** |
+| `POST /api/auth/verify-totp` | pre_auth | Étape 2/2 (`{code}`) → cookie session ; accepte aussi un code de récupération (à usage unique) |
 | `POST /api/auth/logout` | session | Efface le cookie (caveat JWT stateless, cf RESILIENCE.md) → 204 |
 | `GET /api/auth/me` | session | Profil de l'admin connecté → 200 |
 | `POST /api/establishments` | ⚠️ admin¹ | Crée un établissement, renvoie l'API key en clair (1×) → 201 |

@@ -109,6 +109,28 @@ supervision multi-établissements de la flotte Dialeo.
   401 générique systématique (pas de fuite). **Throttling de login : dette phase B.**
 - 65 tests pytest verts (22 nouveaux). MFA TOTP et frontend → phases B et C.
 
+**Chantier 4 phase B — MFA TOTP (`v0.8.0-auth-mfa-totp`)** :
+- Login **2 étapes** : `POST /api/auth/login` (mdp) émet désormais un JWT
+  `pre_auth` (5 min, AUCUN accès admin). `POST /api/auth/verify-totp` (code)
+  échange contre un JWT `session`. Même cookie `diallosup_session`, le `purpose`
+  discrimine. `require_admin` reste strict sur `purpose="session"`.
+- Enrôlement TOTP : `/api/auth/totp/{enroll,confirm}` (URI otpauth pour
+  Google/Microsoft Authenticator/Authy ; QR rendu côté frontend phase C).
+  Secret TOTP **chiffré at-rest** (Fernet, `TOTP_AT_REST_KEY` dans `.env`).
+- **10 codes de récupération** générés à la confirmation, hashés SHA-256
+  (haute entropie → pas besoin de bcrypt), affichés en clair **une seule fois**.
+  Acceptés par `/verify-totp` (consommation à usage unique).
+- **Lockout** persistant par compte : 5 essais / 15 min (`failed_login_count`,
+  `locked_until`), code retour **`423 Locked`**. Appliqué à `/login` + `/verify-totp`
+  + `/totp/confirm`. ⚠️ **Le compteur ne reset QUE sur session complète**
+  (verify-totp OK / confirm OK), JAMAIS sur succès du mdp seul → empêche le
+  brute-force TOTP. Test dédié `test_password_ok_does_not_reset_failure_counter`.
+- Migration prod : `python -m app.scripts.migrate_phase_b` (ALTER `users`
+  idempotent, ajoute les 2 colonnes lockout).
+- `init_secrets` enrichi (`TOTP_AT_REST_KEY` Fernet). 98 tests pytest verts
+  (33 nouveaux). Doc : `RESILIENCE.md` (déploiement + tradeoffs + caveats),
+  `JOURNAL.md` (créé), `ROADMAP.md` (phase B + C).
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au

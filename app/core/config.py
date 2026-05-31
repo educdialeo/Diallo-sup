@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     # Cookie Secure : False en local HTTP ; passer True quand HTTPS (Cloudflare).
     session_cookie_secure: bool = False
 
+    # === MFA TOTP (chantier 4 phase B) ===
+    # Cle Fernet pour chiffrer le secret TOTP en BDD (44 caracteres base64).
+    # Genere par init_secrets (idempotent). Si manquant, /api/auth/totp/* renvoie 503.
+    totp_at_rest_key: str | None = None
+    # Duree de vie du JWT pre_auth (entre /login et /verify-totp), en minutes.
+    preauth_ttl_minutes: int = 5
+    # Lockout par compte : nb d'echecs avant verrouillage, et duree du verrouillage.
+    login_max_attempts: int = 5
+    login_lockout_minutes: int = 15
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )

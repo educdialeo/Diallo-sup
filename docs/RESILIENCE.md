@@ -126,3 +126,69 @@ sur LAN, l'exposition est contenue, mais avant toute exposition externe
 **throttler** les tentatives par IP (ex. compteur en mémoire ou via un middleware
 type `slowapi`), idéalement couplé à un blocage progressif. À traiter en
 **phase B**, avec la MFA.
+
+---
+
+## MFA TOTP (chantier 4 phase B)
+
+### Déploiement (à faire dans l'ordre, command-by-command)
+
+```bash
+cd /Users/serveur/Projects/Diallo-sup
+git pull origin main
+.venv/bin/pip install -e ".[dev]"              # ajoute pyotp + cryptography
+.venv/bin/python -m app.scripts.migrate_phase_b   # ALTER TABLE users (idempotent)
+.venv/bin/python -m app.scripts.init_secrets       # ajoute TOTP_AT_REST_KEY (idempotent)
+launchctl kickstart -k gui/501/com.diallosup.uvicorn
+```
+
+Au premier login après upgrade, l'admin existant aura `totp_enrolled=False` →
+flux d'enrôlement obligatoire (login → /totp/enroll → /totp/confirm).
+
+### Décision : compteur d'échec NE RESET QUE sur session complète
+
+Le compteur de lockout (5 échecs / 15 min) ne se remet à zéro **que sur
+`verify-totp OK` ou `confirm OK`** (= établissement d'une session complète),
+**jamais sur le succès du mot de passe seul**. Sinon, un attaquant qui aurait
+le mot de passe pourrait brute-forcer le TOTP à l'infini en bouclant
+`/login` + `/verify-totp`. Test dédié :
+`test_password_ok_does_not_reset_failure_counter`.
+
+### Tradeoffs assumés
+
+- **`423 Locked` révèle l'état du compte.** L'attaquant voit qu'un email
+  existe et qu'il est verrouillé (vs 401 pour email inconnu ou mdp faux).
+  Acceptable car le bénéfice (clarté serveur + UX claire pour le user
+  légitime) prime sur la fuite mineure d'énumération.
+- **Lockout-as-DoS auto-résolu en 15 min.** Quelqu'un peut volontairement
+  faire 5 mauvais mots de passe sur l'email d'un admin pour le verrouiller
+  ; la fenêtre de 15 min limite l'impact et la valeur de l'attaque (un
+  simple `register_failure` après expiration repart à zéro). Pas de
+  reset manuel exposé en API à ce stade (compatible avec phase C).
+- **`.env` porte désormais 2 secrets critiques** : `JWT_SECRET` (signature
+  des cookies de session) **et** `TOTP_AT_REST_KEY` (chiffrement des
+  secrets TOTP en BDD). Backup hors-bande de `.env` recommandé (au moins
+  la `TOTP_AT_REST_KEY` : sans elle, plus aucun admin enrôlé ne peut
+  vérifier son TOTP). En cas de perte, les utilisateurs ré-enrôlent
+  (les codes de récupération les laissent rentrer une fois). Cf §
+  caveat clé Fernet ci-dessous.
+
+### Caveat clé Fernet (TOTP_AT_REST_KEY) perdue
+
+Si `TOTP_AT_REST_KEY` est perdue/changée, **tous les secrets TOTP en base
+deviennent illisibles** → chaque admin doit ré-enrôler. Les **codes de
+récupération restent valides** (hash SHA-256 indépendant) : un admin peut
+encore se logger une fois avec un code de récup, puis re-faire
+`/totp/enroll` + `/confirm` pour repartir d'un nouveau secret. C'est la
+ceinture de sécurité.
+
+### Backlog Phase C (et au-delà)
+
+- **Flux reset/ré-enrôlement TOTP** (perte de téléphone, codes de récup
+  épuisés) : script CLI `python -m app.scripts.reset_totp <email>` qui
+  vide `totp_secret` + `totp_enrolled=False` (admin local sur DialSup).
+  Hors scope phase B.
+- **Régénération de codes de récupération** côté API : à brancher quand
+  l'écran "sécurité du compte" arrivera (phase C).
+- **Throttling IP** (au-delà du throttle par compte) pour résister à un
+  flood d'emails inconnus. Phase C ou plus tard.

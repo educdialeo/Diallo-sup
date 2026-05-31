@@ -1,0 +1,80 @@
+# Journal des chantiers — Diallo-sup
+
+Index horodaté des chantiers livrés sur ce repo, du plus récent au plus ancien.
+Référence : tags annotés sur `main`. Détails techniques dans le commit / les diffs.
+
+---
+
+## 2026-05-31 — Chantier 4 phase B : MFA TOTP (`v0.8.0-auth-mfa-totp`)
+
+Flux login 2 étapes (mot de passe → TOTP) + enrôlement avec QR (URI otpauth) +
+10 codes de récupération à usage unique. Chiffrement at-rest du secret TOTP
+(Fernet, `TOTP_AT_REST_KEY` dans `.env`). Throttling/lockout 5 essais / 15 min
+sur `/login` ET `/verify-totp`, avec règle non-négociable : **le compteur ne
+reset QUE sur établissement d'une session complète** (jamais sur succès du mdp
+seul, sinon brute-force TOTP rouvert). Script de migration
+`migrate_phase_b.py` (ALTER `users` idempotent) — Alembic toujours différé.
+33 nouveaux tests pytest (98 au total). Doc : `RESILIENCE.md` complété (tradeoff
+423, lockout-as-DoS auto-résolu 15 min, 2 secrets critiques dans `.env`,
+backlog reset TOTP).
+
+## 2026-05-31 — Chantier 4 phase A : socle auth admin (`v0.7.0-auth-backend-password`)
+
+Table `users`, hash bcrypt via passlib (bcrypt pinné `<5`), JWT HS256 en cookie
+`diallosup_session` (HttpOnly / SameSite=Strict / 12 h), endpoints
+`/api/auth/{login,logout,me}`, dépendance `require_admin`. `JWT_SECRET`
+optionnel (WARN au boot + `/api/auth/*` 503 si absent, mais `/api/ingest`
+continue → upgrade non-bloquant). Scripts `init_secrets` (idempotent) et
+`create_admin` (interactif `getpass`, min 12 caractères, refus doublons).
+Claim `purpose="session"` (prise pour `pre_auth` de la phase B). 22 nouveaux
+tests pytest (65 au total).
+
+## 2026-05-24 — Chantier 3 sous-phase 3.4.B : launchd uvicorn (`v0.6.0-launchd-uvicorn`)
+
+uvicorn DialSup placé sous launchd (LaunchAgent `com.diallosup.uvicorn`,
+uid 501) : `RunAtLoad` + `KeepAlive`, logs `~/Library/Logs/diallosup-uvicorn.log`,
+`WorkingDirectory=/Users/serveur/Projects/Diallo-sup` (critique : la base
+SQLite est en chemin relatif). Source : `ops/com.diallosup.uvicorn.plist`.
+Procédures bascule/rollback/`bootstrap`/`bootout`/`kickstart` documentées
+dans `docs/RESILIENCE.md`. 8 tests structure du plist (plistlib).
+
+## 2026-05-24 — Chantier 3 sous-phase 3.4.C : 11ᵉ type `daemon_uvicorn_health` (`v0.5.0-payload-daemon-health`)
+
+Ajout du signal du daemon de surveillance M4 (ping uvicorn 60 s) à l'union
+discriminée d'ingestion. Stockage `raw_pushes` uniquement (signal "status",
+pas de table dédiée). Discriminant aligné sur le pattern existant
+(`type` + `timestamp`) — escalade tranchée avec le repo M4 pour
+homogénéiser le contrat. 7 nouveaux tests.
+
+## 2026-05-23 — Chantier 3 phase 3.2 : payload N1 exhaustif (`v0.4.0-payload-n1`)
+
+`POST /api/ingest` accepte les 10 types du cadrage N1 via union discriminée
+Pydantic v2 (`type`), validation stricte `extra="forbid"`. Stockage hybride
+`raw_pushes` (log brut universel) + tables dédiées
+(`heartbeats`/`sessions`/`incidents`/`reports`). Anti-PII reports : champ
+identifiant → `400` explicite via handler global
+(`RequestValidationError → extra_forbidden`). `niveau_scolaire = list[str]`
+parmi enum CP→3e. 22 nouveaux tests (28 au total).
+
+## 2026-05-23 — Chantier 3 phase 3.1 : auth API key + ingest réel (`v0.3.0-ingest-api`)
+
+API key 256 bits / établissement (`secrets.token_urlsafe(32)`), hash SHA-256
+stocké, clé en clair renvoyée 1× à la création. Auth Bearer via dépendance
+`get_current_etablissement`. `POST /api/ingest` réel (202) → table `heartbeats`.
+`GET /api/establishments/{id}/heartbeats` avec `?limit=` 50/max 1000, tri
+desc, cloisonnement par établissement (403). 10 tests.
+
+## 2026-05-23 — Chantier 2 : scaffolding frontend (`v0.2.0-frontend-scaffold`)
+
+Ossature React 19 + TypeScript + Vite 7 + Tailwind v4 + React Router 7,
+charte Dialeo (bleu craie, vert sauge/orange chaleureux/rouge brique,
+Inter bundlé via `@fontsource`). Layout (sidebar fixe DiALEO + breadcrumb),
+6 routes placeholder, `HealthIndicator` (sonde `GET /health`). FastAPI sert
+`frontend/dist/` en prod (`StaticFiles` + fallback SPA). 1 test Vitest.
+
+## 2026-05-23 — Chantier 0 : fondation backend (`v0.1.0-scaffold`)
+
+Backend FastAPI + SQLAlchemy 2.0 + SQLite, table `etablissements` (`id, name,
+api_key_hash, status, created_at`), endpoint `/health`, `/api/ingest` en
+stub 501. Documentation initiale (`README`, `CLAUDE.md`, `ARCHITECTURE.md`,
+`ROADMAP.md`). 3 tests pytest.

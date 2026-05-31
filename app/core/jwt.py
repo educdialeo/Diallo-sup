@@ -28,6 +28,19 @@ def encode_session_token(user_id: int, ttl: timedelta, secret: str) -> str:
     return jwt.encode(payload, secret, algorithm=_ALG)
 
 
+def encode_preauth_token(user_id: int, ttl: timedelta, secret: str) -> str:
+    """JWT pre_auth — emis apres le mdp, n'ouvre PAS les routes admin."""
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(user_id),
+        "iat": int(now.timestamp()),
+        "exp": int((now + ttl).timestamp()),
+        "purpose": "pre_auth",
+        "ver": 1,
+    }
+    return jwt.encode(payload, secret, algorithm=_ALG)
+
+
 def decode_token(token: str, secret: str) -> dict[str, Any]:
     """Renvoie les claims si la signature/exp sont valides ; leve sinon."""
     return jwt.decode(token, secret, algorithms=[_ALG])
