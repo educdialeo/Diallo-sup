@@ -1,11 +1,14 @@
 """Endpoints etablissements : creation (admin) et relecture des heartbeats."""
 
-from fastapi import APIRouter, HTTPException, Query, status
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 
+from app.api.auth_admin import require_admin
 from app.api.deps import CurrentEtablissement, DbSession
 from app.core.security import generate_api_key, hash_api_key
-from app.models import Etablissement, Heartbeat
+from app.models import Etablissement, Heartbeat, User
 from app.schemas.establishment import EstablishmentCreate, EstablishmentCreated
 from app.schemas.heartbeat import HeartbeatOut
 
@@ -17,12 +20,14 @@ router = APIRouter(prefix="/api", tags=["establishments"])
     status_code=status.HTTP_201_CREATED,
     response_model=EstablishmentCreated,
 )
-def create_establishment(data: EstablishmentCreate, db: DbSession) -> EstablishmentCreated:
+def create_establishment(
+    data: EstablishmentCreate,
+    db: DbSession,
+    _admin: Annotated[User, Depends(require_admin)],
+) -> EstablishmentCreated:
     """Cree un etablissement et renvoie son API key en clair (UNE SEULE FOIS).
 
-    ⚠️ ENDPOINT ADMIN — non protege en local pour la phase 3.1.
-    DOIT etre derriere Cloudflare Access en prod (cf. ARCHITECTURE.md §7.1).
-    A securiser AVANT toute exposition externe.
+    Protege par `require_admin` (session JWT admin) depuis le chantier 4 phase C.
     """
     if db.scalar(select(Etablissement).where(Etablissement.name == data.name)):
         raise HTTPException(

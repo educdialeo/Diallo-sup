@@ -192,3 +192,12 @@ ceinture de sécurité.
   l'écran "sécurité du compte" arrivera (phase C).
 - **Throttling IP** (au-delà du throttle par compte) pour résister à un
   flood d'emails inconnus. Phase C ou plus tard.
+
+### Risque connu (phase C) — onglet fermé avant sauvegarde des codes de récup
+
+Les 10 codes de récupération sont affichés **une seule fois** à la
+confirmation d'enrôlement. Si l'utilisateur ferme l'onglet, recharge la page,
+ou contourne la case "j'ai sauvegardé", ils sont **perdus côté client**
+(hashés en base, non récupérables). La session reste valide grâce au cookie ;
+seule conséquence : plus de filet de secours en cas de perte du téléphone →
+ré-enrôlement TOTP CLI requis (cf backlog ci-dessus). Cf `docs/ROADMAP.md`.

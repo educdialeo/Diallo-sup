@@ -1,9 +1,21 @@
-import { NavLink } from 'react-router-dom'
+import { LogOut } from 'lucide-react'
+import { NavLink, useNavigate } from 'react-router-dom'
+
+import { useAuth } from '../auth/useAuth'
 import { NAV_ITEMS } from '../lib/nav'
 import { HealthIndicator } from './HealthIndicator'
 
-// Sidebar verticale fixe : wordmark DiALEO + navigation + état console.
+// Sidebar verticale fixe : wordmark DiALEO + navigation + santé + déconnexion.
 export function Sidebar() {
+  const { state, logout } = useAuth()
+  const navigate = useNavigate()
+  const email = state.status === 'authenticated' ? state.user.email : null
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <aside className="flex h-full w-64 flex-col border-r border-slate-200 bg-white">
       <div className="flex h-16 items-center gap-2 px-6">
@@ -33,8 +45,25 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-slate-200 px-6 py-4">
+      <div className="space-y-3 border-t border-slate-200 px-6 py-4">
         <HealthIndicator />
+        {email && (
+          <div className="flex items-center justify-between gap-2 text-xs">
+            <span className="truncate text-slate-500" title={email}>
+              {email}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-1 rounded px-2 py-1 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              Déconnexion
+            </button>
+          </div>
+        )}
       </div>
     </aside>
   )

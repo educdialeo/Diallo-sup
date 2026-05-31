@@ -97,7 +97,37 @@ Suivi détaillé dans `docs/JOURNAL.md`. Pour rappel :
   livré côté code : login 2 étapes, enrôlement TOTP + URI otpauth, codes de
   récupération, lockout 5/15 min, chiffrement at-rest. Déploiement DialSup
   séparé (commande par commande), cf `docs/RESILIENCE.md`.
-- **Phase C — frontend auth (à venir)**
-  écran de login, flux 2 étapes UI, rendu du QR via lib JS, écran "sécurité
-  du compte" (régénération codes de récup). Branchement de `require_admin`
-  sur les vrais écrans N1.
+- **Phase C — frontend auth (`v0.9.0-auth-frontend`, 31 mai 2026)** ✅
+  livré côté code : UI login 2 étapes + enrôlement MFA (QR + saisie manuelle) +
+  10 codes de récupération avec gate "j'ai sauvegardé", bouton Déconnexion dans
+  la sidebar, route guard `<RequireAuth>` sur toutes les pages console, intercepteur
+  401 global. Backend : `POST /api/establishments` passe sous `require_admin`
+  (dette de la phase 3.1 levée). Déploiement DialSup groupé avec Phase B (séparé,
+  command-by-command).
+
+### Règles à appliquer aux futurs chantiers N1
+
+- **Tout nouvel endpoint backend servant les écrans console** (Dashboard, Vue
+  établissement, Reports, Déploiements N2, Inventaire/licences, Réglages) doit
+  être déclaré **d'emblée sous `Depends(require_admin)`**. Pas de "on protégera
+  plus tard" — c'est la leçon de la dette portée par `POST /api/establishments`
+  depuis la phase 3.1. Pattern à copier : voir l'endpoint actuel.
+- Les endpoints **client** (consommés par les Mac mini avec leur API key, type
+  `/api/ingest` ou les futurs `GET /api/ingest/...`) restent sous
+  `get_current_etablissement` (Bearer). Bien distinguer les deux familles dès
+  la conception.
+- Pour l'admin qui veut lire les données d'**un** établissement (ex. heartbeats),
+  prévoir un endpoint dédié `/api/admin/establishments/{id}/...` sous
+  `require_admin`, **distinct** du `/api/establishments/{id}/heartbeats` client.
+
+### Risque connu — onglet fermé avant sauvegarde des codes de récup
+
+À la confirmation d'enrôlement, les 10 codes sont affichés **une seule fois**.
+Si l'utilisateur **ferme l'onglet** ou recharge la page avant d'avoir noté/
+téléchargé les codes (ou avant de cocher "j'ai sauvegardé"), ils sont **perdus**
+côté client (côté serveur ils sont déjà hashés, donc non récupérables). La
+session reste valide grâce au cookie ; la seule conséquence est l'absence de
+filet de secours en cas de perte du téléphone. **Mitigation actuelle** : la gate
+"j'ai sauvegardé" + l'avertissement fort dans l'écran. **Mitigation future
+(backlog)** : endpoint de régénération des codes de récupération côté admin
+authentifié, à brancher dans l'écran "sécurité du compte" (phase D ou plus tard).

@@ -63,12 +63,32 @@ def client(engine) -> Generator[TestClient, None, None]:
 
 
 @pytest.fixture()
-def make_establishment(client):
-    """Cree un etablissement via l'API et renvoie sa reponse (dont l'api_key)."""
+def make_establishment(db_session):
+    """Cree un etablissement directement en BDD et renvoie sa representation.
+
+    Bypass HTTP volontairement (chantier 4 phase C) : POST /api/establishments
+    est desormais protege par require_admin, et les tests d'ingest/heartbeats
+    n'ont pas a configurer l'auth admin juste pour fabriquer un etablissement
+    de fixture. Le verrouillage HTTP de l'endpoint est teste explicitement
+    dans tests/test_establishments.py.
+    """
+    from app.core.security import generate_api_key, hash_api_key
 
     def _make(name: str) -> dict:
-        resp = client.post("/api/establishments", json={"name": name})
-        assert resp.status_code == 201, resp.text
-        return resp.json()
+        api_key = generate_api_key()
+        etab = Etablissement(
+            name=name,
+            api_key_hash=hash_api_key(api_key),
+            status="active",
+        )
+        db_session.add(etab)
+        db_session.commit()
+        db_session.refresh(etab)
+        return {
+            "id": etab.id,
+            "name": etab.name,
+            "api_key": api_key,
+            "created_at": etab.created_at.isoformat(),
+        }
 
     return _make

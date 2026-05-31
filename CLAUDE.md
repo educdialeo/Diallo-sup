@@ -131,6 +131,25 @@ supervision multi-établissements de la flotte Dialeo.
   (33 nouveaux). Doc : `RESILIENCE.md` (déploiement + tradeoffs + caveats),
   `JOURNAL.md` (créé), `ROADMAP.md` (phase B + C).
 
+**Chantier 4 phase C — frontend auth + verrouillage (`v0.9.0-auth-frontend`)** :
+- UI d'auth : `/login` state machine (PASSWORD → VERIFY_TOTP **ou** ENROLL_QR →
+  SHOW_RECOVERY_CODES → /dashboard). QR via `react-qr-code` + repli saisie
+  manuelle. 10 codes de récup affichés une fois + gate "j'ai sauvegardé"
+  obligatoire (Copier / Télécharger .txt). Lien "utiliser un code de récupération"
+  sur l'écran TOTP. Bouton Déconnexion dans la sidebar.
+- Route guard `<RequireAuth>` sur toutes les pages console (redirige `/login`).
+  AuthProvider charge `GET /api/auth/me` au montage. Intercepteur 401 global hors
+  `/api/auth/*` → purge état + redirection. Toutes les fetch en `credentials: 'include'`.
+- Backend : `POST /api/establishments` passe sous `Depends(require_admin)`
+  (dette de la phase 3.1 levée). `make_establishment` refacto direct DB.
+  3 nouveaux tests pytest (sans cookie → 401, pre_auth seul → 401, session → 201).
+- Frontend : 13 nouveaux tests Vitest (api wrapper, AuthProvider, login flow,
+  recovery gate, App sous RequireAuth). Total 101 pytest + 14 Vitest verts.
+- Registre **vouvoiement** uniforme dans toute l'UI.
+- **Règle pour les chantiers N1** : tout nouvel endpoint console DOIT être créé
+  d'emblée sous `Depends(require_admin)` (cf `docs/ROADMAP.md`).
+- **Aucun déploiement** : Phases B+C groupées plus tard, command-by-command séparé.
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au

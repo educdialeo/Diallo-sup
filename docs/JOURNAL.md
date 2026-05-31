@@ -5,6 +5,23 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-05-31 — Chantier 4 phase C : frontend auth + verrouillage console (`v0.9.0-auth-frontend`)
+
+UI d'authentification complète : login mot de passe → flux 2 étapes (saisie code TOTP
+**ou** code de récupération) → console. Premier login d'un user non enrôlé : écran
+d'enrôlement avec **QR (react-qr-code)** + repli "saisie manuelle" (parse du secret
+depuis l'URI `otpauth://`) → 10 codes de récupération affichés **une seule fois**, gate
+"j'ai sauvegardé mes codes" obligatoire + boutons Copier / Télécharger .txt. Bouton
+Déconnexion dans la sidebar (sous l'indicateur santé). Toutes les pages de la console
+sont désormais derrière `<RequireAuth>` (redirection automatique `/login` si la session
+disparaît, intercepteur 401 global hors `/api/auth/*`). Backend : `POST /api/establishments`
+passe sous `require_admin` (dette de la phase 3.1 levée). `make_establishment` refacto
+en direct DB (les autres tests d'ingest/heartbeats n'ont pas à configurer l'auth admin).
+Registre **vouvoiement** uniforme dans toute l'UI. **Aucun déploiement** : Phases B+C
+groupées plus tard en mini-chantier séparé. **101 tests pytest** verts (3 nouveaux) +
+**14 tests Vitest** verts (13 nouveaux : api wrapper, AuthProvider, login flow, recovery
+gate, app under RequireAuth).
+
 ## 2026-05-31 — Chantier 4 phase B : MFA TOTP (`v0.8.0-auth-mfa-totp`)
 
 Flux login 2 étapes (mot de passe → TOTP) + enrôlement avec QR (URI otpauth) +
