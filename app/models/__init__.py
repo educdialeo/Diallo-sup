@@ -6,6 +6,7 @@ from app.models.incident import Incident
 from app.models.raw_push import RawPush
 from app.models.report import Report
 from app.models.session import SessionRecord
+from app.models.user import User
 
 __all__ = [
     "Etablissement",
@@ -14,4 +15,5 @@ __all__ = [
     "RawPush",
     "Report",
     "SessionRecord",
+    "User",
 ]

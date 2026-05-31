@@ -161,6 +161,9 @@ création de l'établissement.
 | Méthode & route | Auth | Description |
 |---|---|---|
 | `GET /health` | — | Sonde de liveness |
+| `POST /api/auth/login` | — | Login admin (`{email, password}`) → cookie de session `diallosup_session` (12 h, HttpOnly, SameSite=Strict) ; **401 générique** sinon |
+| `POST /api/auth/logout` | session | Efface le cookie (caveat JWT stateless, cf RESILIENCE.md) → 204 |
+| `GET /api/auth/me` | session | Profil de l'admin connecté → 200 |
 | `POST /api/establishments` | ⚠️ admin¹ | Crée un établissement, renvoie l'API key en clair (1×) → 201 |
 | `POST /api/ingest` | Bearer | Reçoit un push (10 types, voir ci-dessous) et le persiste → 202 |
 | `GET /api/establishments/{id}/heartbeats` | Bearer² | Relit les N derniers heartbeats (`?limit=`, défaut 50, max 1000), tri `received_at` desc → 200 |

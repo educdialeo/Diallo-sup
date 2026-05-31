@@ -92,6 +92,23 @@ supervision multi-établissements de la flotte Dialeo.
 - Source : `ops/com.diallosup.uvicorn.plist`. Procédures (bascule, rollback,
   bootstrap/bootout/kickstart) : `docs/RESILIENCE.md`. Tests structure du plist (plistlib).
 
+**Chantier 4 phase A — auth admin socle (`v0.7.0-auth-backend-password`)** :
+- Table `users` (email, password_hash bcrypt, is_active, + champs réservés
+  phase B : totp_secret, totp_enrolled, recovery_codes). Hash via **passlib[bcrypt]**
+  (bcrypt pinné `<5`), troncature 72 octets transparente (passphrases longues OK).
+- `POST /api/auth/login` (cookie `diallosup_session` HttpOnly/SameSite=Strict/12 h,
+  Secure suit `SESSION_COOKIE_SECURE`), `POST /api/auth/logout`, `GET /api/auth/me`
+  (`require_admin`). JWT HS256 avec claim `purpose: "session"` (prise prévue pour
+  l'étape `pre_auth` de la phase B).
+- **`JWT_SECRET` optionnel** : si absent, WARN au boot + `/api/auth/*` renvoie 503,
+  mais `/api/ingest` continue de tourner → upgrade non-bloquant. Génération via
+  `python -m app.scripts.init_secrets` (idempotent, jamais régénéré).
+- Bootstrap admin : `python -m app.scripts.create_admin` (interactif, getpass,
+  min 12 caractères, refuse les doublons d'email).
+- Anti-énumération : hash dummy précalculé pour égaliser le temps si email inconnu.
+  401 générique systématique (pas de fuite). **Throttling de login : dette phase B.**
+- 65 tests pytest verts (22 nouveaux). MFA TOTP et frontend → phases B et C.
+
 ## Ce qui n'est PAS encore là (et ne doit pas être inventé)
 
 - Les **vrais écrans** (Dashboard, Reports, etc.) → arrivent feature par feature au

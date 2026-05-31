@@ -1,5 +1,6 @@
 """Point d'entree de l'application — Console de supervision Dialeo (Diallo-sup)."""
 
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -8,8 +9,9 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import establishments, health, ingest
+from app.api import auth_admin, establishments, health, ingest
 from app.api.errors import register_exception_handlers
+from app.core.config import settings
 from app.core.db import init_db
 
 # Build statique du SPA (genere par `npm run build` dans frontend/).
@@ -56,9 +58,16 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     register_exception_handlers(app)
+    if not settings.jwt_secret:
+        sys.stderr.write(
+            "[diallosup.auth] WARN: JWT_SECRET non configuré dans .env — "
+            "/api/auth/* renverra 503 jusqu'à exécution de "
+            "`python -m app.scripts.init_secrets` (ou create_admin).\n"
+        )
     app.include_router(health.router)
     app.include_router(establishments.router)
     app.include_router(ingest.router)
+    app.include_router(auth_admin.router)
     _mount_spa(app)
     return app
 

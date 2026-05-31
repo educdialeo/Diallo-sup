@@ -81,3 +81,48 @@ curl -s http://127.0.0.1:8000/health                       # de nouveau 200
 - Pendant une brève coupure (~5–10 s), les clients M4 (collecteur + daemon
   supervisor) loggent des `ConnectError` puis reprennent en 202 au cycle suivant
   (clients conçus pour ne jamais lever d'exception).
+
+---
+
+## Auth admin de la console (chantier 4 phase A)
+
+### Bootstrap (à faire une fois après `git pull` sur DialSup)
+
+```bash
+cd /Users/serveur/Projects/Diallo-sup
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m app.scripts.create_admin    # interactif : email + mdp (>= 12)
+launchctl kickstart -k gui/501/com.diallosup.uvicorn   # recharge le code
+```
+
+`create_admin` génère `JWT_SECRET` dans `.env` s'il manque (idempotent ; un
+secret existant n'est **jamais** régénéré, cf leçon Dialeo principal).
+
+### Déploiement non-bloquant
+
+Si `JWT_SECRET` n'est pas configuré, le service démarre quand même : un
+**WARN** apparaît dans les logs (`[diallosup.auth] WARN: JWT_SECRET non
+configuré …`), `/api/auth/*` renvoie **503**, mais `/api/ingest` et `/health`
+fonctionnent normalement. → un `git pull` qui oublie le bootstrap **ne casse
+pas l'ingestion**.
+
+### Caveat « logout stateless » ⚠️
+
+Le JWT est signé mais **non révocable côté serveur** : `POST /api/auth/logout`
+n'efface que le cookie côté navigateur. **Un token volé reste valide jusqu'à
+son `exp`** (12 h par défaut). Mitigations :
+
+- Réduire `SESSION_TTL_HOURS` (au prix d'UX).
+- **Option nucléaire** pour invalider toutes les sessions vivantes : rotation
+  du `JWT_SECRET` (édite `.env`, supprime la ligne ou met une nouvelle valeur,
+  `kickstart -k`) — tous les cookies en circulation deviennent invalides.
+- Phase B (MFA TOTP) ne change pas ce caveat : c'est inhérent au JWT stateless.
+
+### Dette : throttling (phase B)
+
+**Aucun rate-limit** sur `POST /api/auth/login` à ce stade. En local mono-user
+sur LAN, l'exposition est contenue, mais avant toute exposition externe
+(Cloudflare Access ne suffit pas si quelqu'un est dans le tunnel) il faudra
+**throttler** les tentatives par IP (ex. compteur en mémoire ou via un middleware
+type `slowapi`), idéalement couplé à un blocage progressif. À traiter en
+**phase B**, avec la MFA.
