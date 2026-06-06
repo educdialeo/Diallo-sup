@@ -24,6 +24,12 @@
   --color-chaleur-500: #e08a3c; /* orange chaleureux — warning */
   --color-brique-100: #f6e1db;
   --color-brique-500: #b4452f; /* rouge brique — critique */
+
+  /* Charte chalkboard (chantier N1 fleet view). */
+  --color-ardoise-700: #2a3137;  /* slate chalkboard */
+  --color-chalk-50: #f5f1e8;     /* warm light */
+  --color-ambre-100: #f4ead4;
+  --color-ambre-500: #c8923b;    /* badge dormant — sobre, JAMAIS rouge (signal commercial) */
 }
 
 html,

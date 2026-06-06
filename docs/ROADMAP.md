@@ -21,17 +21,20 @@ Pose la fondation du repo. **Ne livre aucune fonctionnalité.**
 
 ## Phase N1 — Console lecture seule (cible : mi-juin 2026)
 
-> **🎯 Prochain chantier (validé 2026-06-06)** : les **écrans N1**, dans cet ordre :
+> **🎯 Suivi des écrans N1** (ordre validé 2026-06-06) :
 >
-> 1. **Dashboard fleet view** (vue d'ensemble des établissements supervisés)
-> 2. **Drill-down établissement** (détail d'un établissement)
+> 1. **Dashboard fleet view** — **LIVRÉ (`v0.10.0-fleet-dashboard`, 2026-06-06)** ✅
+>    `GET /api/fleet` sous `require_admin`, grille de tuiles par établissement
+>    (santé live calculée, sessions live, usage agrégé, sparkline 14 j, badges
+>    incident & dormant), polling 30 s. Cf JOURNAL 2026-06-06.
+> 2. **Drill-down établissement** (détail d'un établissement) — *prochain*
 > 3. **Vue incidents modération**
 > 4. **Inventaire / rapports / réglages** (groupés)
 >
 > ⚠️ Règle non-négociable : **tous les endpoints backend servant ces écrans sont
 > créés d'emblée sous `Depends(require_admin)`** (cf section Plateforme/Auth +
-> JOURNAL chantier 4 phase C, et règle consignée lors du déploiement prod
-> du 2026-06-06). Pattern à copier : `POST /api/establishments`.
+> JOURNAL chantier 4 phase C, règle confirmée par le chantier N1 étape 1).
+> Pattern à copier : `POST /api/establishments`, `GET /api/fleet`.
 
 Console de supervision **multi-établissements en lecture seule**. Livraison des
 **6 écrans** alimentés par les **10 données** remontées (cf ARCHITECTURE §2.1).
@@ -96,6 +99,14 @@ Prérequis transverses à la phase N2 :
 - **Migrations** → encore en `create_all` ; introduire **Alembic** quand le schéma
   N1 se fige (`create_all` n'altère pas les tables existantes). Workaround
   ponctuel pour phase 4-B : `app/scripts/migrate_phase_b.py` (ALTER idempotent).
+- **Fleet dashboard — granularité historique non observée en prod** (chantier
+  N1 étape 1, 2026-06-06) : `sessions_7j` et `trend_14d` reposent sur
+  `granularite == 'jour'` + `periode` ISO date. Le contrat Pydantic autorise
+  `'semaine'`/`'mois'` mais aucune ligne historique n'a encore été reçue en
+  prod (collecteur M4 KO), donc le format réel émis n'a pas pu être vérifié.
+  À reconfirmer quand les premières données arriveront ; le cas échéant,
+  ajouter un parseur `2026-W23` / `2026-06` ou aligner le collecteur sur
+  `granularite='jour'`. Cf JOURNAL 2026-06-06.
 
 ---
 

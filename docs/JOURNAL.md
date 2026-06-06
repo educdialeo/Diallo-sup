@@ -5,6 +5,103 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-06 — Chantier N1 étape 1 : Dashboard fleet view (`v0.10.0-fleet-dashboard`)
+
+Première vraie page console branchée sur de la donnée. Tout sous
+`Depends(require_admin)` dès le départ (règle consignée au déploiement matin).
+
+**Backend** :
+- `GET /api/fleet` (router `app/api/fleet.py`) renvoie une liste typée
+  `FleetItem` par établissement.
+- Calcul de santé live isolé dans `app/services/fleet.py::compute_health`
+  (fonction pure, testable seule). Seuils ajustables en tête de module :
+  `HEALTH_ONLINE_MAX_MIN=5`, `HEALTH_SILENT_MIN_MIN=15`. Règles : aucun HB →
+  silent ; HB ≥ 15 min → silent ; HB.status ≠ "ok" → degraded ; HB ≥ 5 min →
+  degraded ; sinon online.
+- Agrégation par établissement : dernier `sessions kind='live'` (élèves
+  connectés + classes), historiques `kind='historique' granularite='jour'`
+  (`sessions_total` tout-l'historique, `sessions_7j`, `trend_14d` normalisée à
+  14 ints chronologiques, `nb_eleves` agrégé, `duree_moyenne_min` pondérée par
+  `nb_sessions`), incidents `received_at ≥ now − 7 j` (somme des 3
+  `nb_refus_*`), flag `is_dormant = (health == "online" AND sum(trend_14d) == 0)`
+  strict (pas de tolérance pour la v1).
+
+**Frontend** :
+- Page `Dashboard.tsx` réécrite, sous `<RequireAuth>` (chantier 4 phase C).
+  Hook `usePolling` (30 s, cleanup correct, flag d'annulation).
+- Composants : `EstablishmentTile` (3 couches : nom + pastille / live +
+  usage + sparkline / badges), `StatusDot`, `Sparkline` (SVG pure, zéro
+  dépendance).
+- États gérés : `loading`, `empty` (0 établissement), bandeau « tous
+  silencieux », `populated`.
+- Charte chalkboard : 3 tokens ajoutés (`ardoise-700` #2A3137, `chalk-50`
+  #F5F1E8, `ambre-100/500` pour le badge dormant). Pastilles santé : online
+  `sauge-500`, degraded `chaleur-500`, silent `brique-500`. Badge dormant
+  `ambre-500` — sobre, **jamais rouge** (signal commercial, pas une panne).
+  Sentence case partout.
+
+**Inspection prod préalable** : 1 seul établissement (`Dialeo Pilote 001`),
+dernier heartbeat il y a ~5 jours (bug `load_dotenv` non appelé côté
+collecteur M4 confirmé) ; tables `sessions` / `incidents` / `reports` vides.
+**Conséquence sur la prod (:8000)** : tant que le collecteur M4 n'est pas
+réparé, la grille affichera **1 tuile « Dialeo Pilote 001 » en santé silent**,
+zéro session, zéro incident, sparkline plate. C'est le comportement nominal
+attendu du calcul de santé (`HB ≥ 15 min → silent`), pas un bug — la page
+fait simplement remonter la panne d'amont. Le seed dev-only (ci-dessous) est
+le seul moyen de démontrer les 4 états + le badge dormant et l'incident.
+
+**Hypothèse ouverte** (à confirmer quand de vraies `sessions_historiques`
+arriveront en prod) : la couche **trend_14d / sessions_7j repose sur
+`granularite == 'jour'`** et un `periode` en ISO date `YYYY-MM-DD`. Le
+contrat Pydantic (`SessionsHistoriquesIn`) autorise aussi `'semaine'` et
+`'mois'` avec `periode: str` libre — non vérifié contre l'émetteur réel
+(le collecteur M4 vit dans un autre repo, pas observable ici). Si M4
+n'émet que `'semaine'`/`'mois'`, la sparkline et le compteur 7 j resteront
+à zéro tant qu'une variante jour n'est pas ajoutée. À traiter à ce
+moment-là (parser `2026-W23` / `2026-06` et projeter sur les jours
+correspondants, ou ajouter `granularite='jour'` côté collecteur).
+
+**Seed dev-only** : `app/scripts/seed_fleet.py` peuple 5 établissements
+couvrant online / degraded / silent / dormant / incident récent.
+**Garde-fou** : refuse d'écrire dans la base prod (URL par défaut **ou**
+chemin absolu équivalent à `data/diallo_sup.db`). Recette de démo
+**dev-only** (3 terminaux) :
+
+```bash
+# Terminal 1 — seed + backend de démo, secrets jetables, base hors-prod
+export DATABASE_URL="sqlite:////tmp/diallo_fleet_seed.db"
+export JWT_SECRET=$(.venv/bin/python -c "import secrets;print(secrets.token_urlsafe(32))")
+export TOTP_AT_REST_KEY=$(.venv/bin/python -c "from cryptography.fernet import Fernet;print(Fernet.generate_key().decode())")
+.venv/bin/python -m app.scripts.seed_fleet
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8017
+
+# Terminal 2 — créer l'admin dans la base seedée (ne touche pas .env réel)
+DATABASE_URL="sqlite:////tmp/diallo_fleet_seed.db" .venv/bin/python <<'PY'
+import getpass
+from app.core.db import SessionLocal, init_db
+from app.scripts.create_admin import create_admin
+init_db()
+db = SessionLocal()
+create_admin(input("Email : "), getpass.getpass("Mdp (>=12) : "), db)
+db.close()
+PY
+
+# Terminal 3 — Vite dev pointant sur le backend de démo (pas :8000 prod)
+cd frontend && VITE_API_TARGET=http://127.0.0.1:8017 npm run dev
+# puis http://localhost:5173 → login + MFA → /dashboard
+```
+
+**Tests** : 14 nouveaux pytest (`test_fleet_health.py` 8 cas purs,
+`test_fleet_endpoint.py` 6 cas HTTP : 401 sans session, structure complète,
+silent par défaut, dormant détecté, agrégation usage + trend + sessions_7j,
+incidents fenêtre 7 j) + 5 pytest seed safeguard + 4 vitest Dashboard
+(empty / populated / badge incident / bandeau tous silencieux). **Total :
+120 pytest + 18 vitest verts**.
+
+**Hors scope** (consigné) : drill-down établissement, vue incidents dédiée,
+inventaire / rapports / réglages, SSE / websockets, toute modification de
+l'ingestion.
+
 ## 2026-06-06 — Déploiement prod chantier 4 (auth admin B+C)
 
 Opération de **déploiement** uniquement (aucun changement de code, pas de
