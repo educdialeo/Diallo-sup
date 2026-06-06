@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 import type { FleetItem } from '../lib/fleet'
 import { Sparkline } from './Sparkline'
 import { StatusDot } from './StatusDot'
@@ -15,7 +17,11 @@ function timeAgo(iso: string | null): string {
 
 export function EstablishmentTile({ item }: { item: FleetItem }) {
   return (
-    <article className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <Link
+      to={`/etablissement/${item.id}`}
+      aria-label={`Voir le détail de ${item.name}`}
+      className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-craie-300 hover:shadow"
+    >
       {/* Haut : nom + pastille de santé */}
       <header className="flex items-start justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-800">{item.name}</h3>
@@ -65,7 +71,7 @@ export function EstablishmentTile({ item }: { item: FleetItem }) {
           )}
         </footer>
       )}
-    </article>
+    </Link>
   )
 }
 

@@ -4,6 +4,7 @@ import { RequireAuth } from './auth/RequireAuth'
 import { Layout } from './components/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Deployments } from './pages/Deployments'
+import { EstablishmentDetail } from './pages/EstablishmentDetail'
 import { Etablissement } from './pages/Etablissement'
 import { Inventory } from './pages/Inventory'
 import { Reports } from './pages/Reports'
@@ -21,6 +22,7 @@ export function App() {
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/etablissement" element={<Etablissement />} />
+          <Route path="/etablissement/:id" element={<EstablishmentDetail />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/deploiements" element={<Deployments />} />
           <Route path="/inventaire" element={<Inventory />} />

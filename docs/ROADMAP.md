@@ -27,8 +27,12 @@ Pose la fondation du repo. **Ne livre aucune fonctionnalité.**
 >    `GET /api/fleet` sous `require_admin`, grille de tuiles par établissement
 >    (santé live calculée, sessions live, usage agrégé, sparkline 14 j, badges
 >    incident & dormant), polling 30 s. Cf JOURNAL 2026-06-06.
-> 2. **Drill-down établissement** (détail d'un établissement) — *prochain*
-> 3. **Vue incidents modération**
+> 2. **Drill-down établissement** — **LIVRÉ (`v0.11.0-establishment-detail`, 2026-06-06)** ✅
+>    `GET /api/fleet/{id}` sous `require_admin`, page détail avec panneaux
+>    Machine / Dialeo / Daemon / Ollama / Historique 30 j / Incidents 30 j ;
+>    chaque panneau marque sa propre fraîcheur (badge « périmé » côté UI,
+>    seuil 10 min). Tuile cliquable, polling 30 s. Cf JOURNAL 2026-06-06.
+> 3. **Vue incidents modération** — *prochain*
 > 4. **Inventaire / rapports / réglages** (groupés)
 >
 > ⚠️ Règle non-négociable : **tous les endpoints backend servant ces écrans sont
@@ -107,6 +111,22 @@ Prérequis transverses à la phase N2 :
   À reconfirmer quand les premières données arriveront ; le cas échéant,
   ajouter un parseur `2026-W23` / `2026-06` ou aligner le collecteur sur
   `granularite='jour'`. Cf JOURNAL 2026-06-06.
+- **Fleet — health top-level ne reflète pas la dégradation au niveau service**
+  (chantier N1 étape 2, 2026-06-06) : `compute_health` ne pondère que la
+  fraîcheur + le `status` du heartbeat. Or `heartbeats.status` vaut toujours
+  `"ok"` en prod aujourd'hui. Conséquence concrète : un établissement peut
+  afficher 🟢 alors qu'un service est tombé (`sante_systeme.status_global="degraded"`,
+  `dialeo_status.uvicorn_status="down"`, `daemon.consecutive_failures` élevé).
+  Pour ces deux chantiers on s'appuie sur les **panneaux fins** de la page
+  détail qui exposent ces signaux. Candidat à enrichir `compute_health` (et
+  donc la pastille de la tuile) avec ces sources quand le fix du collecteur M4
+  ramènera de la donnée fraîche et qu'on aura des exemples concrets de
+  dégradation. Cf JOURNAL 2026-06-06.
+- **Fleet — `ollama_status` jamais observé en prod** (chantier N1 étape 2,
+  2026-06-06) : 0 ligne `raw_pushes` de type `ollama_status` au moment du
+  build. Le panneau Ollama de la page détail est en place et lira la donnée
+  quand elle arrivera ; en attendant l'UI affiche « Non rapporté ». À
+  reconfirmer quand M4 émettra ce type.
 
 ---
 

@@ -5,6 +5,84 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-06 — Chantier N1 étape 2 : Drill-down établissement (`v0.11.0-establishment-detail`)
+
+Page détail atteinte en cliquant une tuile du Dashboard. Réutilise l'infra
+posée à l'étape 1 (`compute_health`, `usePolling`, `StatusDot`, `Sparkline`,
+charte chalkboard, seed) ; pas un gros build neuf.
+
+**Backend** :
+- `GET /api/fleet/{etablissement_id}` (sous `require_admin`) renvoie un
+  `EstablishmentDetail` typé. 401 sans cookie / pre_auth seul, **404** si étab
+  inexistant.
+- Helpers extraits/ajoutés dans `app/services/fleet.py` : `_last_raw_push`
+  (générique), `_machine_health`, `_ollama_snapshot`, `_dialeo_snapshot`,
+  `_daemon_snapshot` (chacun lit le dernier `raw_push` du type voulu et
+  expose `last_seen_at`), `_incidents_list` (LISTE des incidents 30 j vs la
+  somme de la tuile), `_usage_history` (30 entrées/jour avec zéros remplis,
+  `duree_moyenne_min` pondérée par `nb_sessions` intra-jour),
+  `build_establishment_detail`.
+- 8 nouveaux tests pytest : 401 sans/avec pre_auth, 404 inexistant, structure
+  complète, parsing machine depuis `sante_systeme`, parsing `dialeo`, liste
+  incidents avec ventilation + fenêtre 30 j, et **test dédié à la dette
+  consignée** (un `sante_systeme.status_global="degraded"` ne fait PAS
+  basculer le `health` top-level).
+
+**Découverte (faite avant code)** : le `heartbeats.payload` réel en prod ne
+porte PAS la télémétrie machine (juste `{type, timestamp, status}` minimal).
+Les vraies données viennent de 4 types distincts loggés dans `raw_pushes` :
+`sante_systeme` (CPU/RAM/disque/uptime), `dialeo_status`
+(version/uvicorn_status/modes_active), `daemon_uvicorn_health`
+(uvicorn_status/consecutive_failures), `ollama_status`. C'est ce que parse
+la page détail.
+
+**Frontend** :
+- Route `/etablissement/:id` sous `<RequireAuth>`, page
+  `EstablishmentDetail.tsx`. Tuile `EstablishmentTile` rendue **cliquable**
+  (`<Link>` + hover sobre).
+- Cartes : en-tête, Sessions live, Machine, Dialeo, Daemon de surveillance,
+  Ollama, Historique d'usage 30 j (Sparkline 30 valeurs, **pas** de grosse
+  lib de charts), Incidents modération 30 j (tableau compteurs ventilés).
+  Lien retour « ← Dashboard ».
+- **Helper `lib/staleness.ts`** : seuil 10 min (généreux pour absorber les
+  collectes 30 s / 2 min de l'archi). Chaque panneau affiche son
+  `last_seen_at` lisible (« mis à jour il y a X ») et un **badge « périmé »
+  ambré** si dépassement, pour qu'un CPU% d'il y a 5 jours ne passe pas pour
+  du temps réel. `last_seen_at: null` → « Non rapporté ».
+- 8 nouveaux tests Vitest (4 page détail : nom + CPU + Dialeo + incident,
+  badge périmé, « Non rapporté » Ollama, 404 ; 4 staleness purs).
+- Sentence case partout, charte chalkboard réutilisée (badge périmé en
+  `ambre-500`, jamais rouge — comme le badge dormant).
+
+**Seed étendu** : `app/scripts/seed_fleet.py` ajoute désormais, pour les
+établissements pertinents, un `sante_systeme` + `dialeo_status` +
+`daemon_uvicorn_health` réalistes (raw_pushes), et **3 incidents ventilés**
+sur Collège Renoir + daemon en alerte (`uvicorn_status="ko"`,
+`consecutive_failures=3`) pour démontrer le panneau. Garde-fou anti-prod
+préservé. Recette de démo identique à celle de l'étape 1.
+
+**Dette technique consignée** (NE PAS retoucher l'étape 1) : `compute_health`
+ne pondère que la **fraîcheur + le `status` du heartbeat** (toujours « ok »
+en prod). Conséquence : un établissement peut afficher 🟢 alors qu'un service
+est tombé (`sante_systeme.status_global="degraded"`,
+`dialeo_status.uvicorn_status="down"`, `daemon.consecutive_failures` élevé).
+À ce stade les **panneaux fins** de la page détail exposent ces signaux et
+l'admin peut juger ; à enrichir `compute_health` plus tard avec ces sources,
+probablement quand le fix du collecteur M4 ramènera de la donnée fraîche.
+Cf ROADMAP § Dette technique.
+
+**Hypothèse ouverte** (re-confirmée 2026-06-06) : `ollama_status` n'a
+**jamais** été observé en prod (0 ligne `raw_pushes`). Le snapshot Ollama est
+exposé pour ne pas avoir à re-coder quand M4 commencera à l'émettre ; en
+attendant l'UI affiche « Non rapporté » dans le panneau Ollama.
+
+**Tests** : **128 pytest + 26 vitest verts** (8 + 8 nouveaux).
+
+**Hors scope** (consigné) : visualiseur du contenu reports (exclu RGPD tant
+que juriste n'a pas tranché), inventaire / réglages, websockets / SSE, modif
+de l'ingestion, seuils d'alerte santé fins (affichage brut en v1), ZÉRO
+touche M4.
+
 ## 2026-06-06 — Chantier N1 étape 1 : Dashboard fleet view (`v0.10.0-fleet-dashboard`)
 
 Première vraie page console branchée sur de la donnée. Tout sous
