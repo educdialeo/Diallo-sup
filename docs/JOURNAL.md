@@ -5,6 +5,37 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-06 — Déploiement prod chantier 4 (auth admin B+C)
+
+Opération de **déploiement** uniquement (aucun changement de code, pas de
+nouveau tag). État avant : process uvicorn DialSup tournait toujours **v0.7.0**
+en mémoire ; le code **v0.9.0** (Phases B + C committées les 31/05) était déjà
+sur le disque, `git status` propre, en sync avec `origin/main`.
+
+Séquence exécutée command-by-command :
+
+1. **Backup base SQLite** : copie de `data/diallo_sup.db` vers
+   `data/diallo_sup.db.bak-20260606-pre-phaseB` (19 Mo).
+2. `.venv/bin/pip install -e ".[dev]"` — deps déjà satisfaites
+   (`pyotp 2.9.0`, `cryptography 48.0.0` déjà présents).
+3. `python -m app.scripts.migrate_phase_b` — **no-op** (les colonnes
+   `failed_login_count` et `locked_until` étaient déjà présentes dans le schéma
+   DialSup, schéma à jour).
+4. `python -m app.scripts.init_secrets` — `JWT_SECRET` et `TOTP_AT_REST_KEY`
+   déjà présents dans `.env`, **préservés** (idempotence honorée).
+5. `launchctl kickstart -k gui/501/com.diallosup.uvicorn` — nouveau PID,
+   `state = running`, `/health` → 200.
+
+**Bootstrap MFA admin** : `gmd@dialeo.com` (id=1) au 1er login post-upgrade →
+réponse `enrolement_requis` → enrôlement TOTP via authenticator → confirmation →
+10 codes de récupération **sauvegardés hors-bande**. Cycle `logout → login (mdp) →
+verify-totp → /me 200` revalidé end-to-end. **Aucun secret affiché ni exfiltré**
+pendant l'opération.
+
+**Résultat** : console DialSup en production **v0.9.0** — verrou auth + MFA actif,
+`POST /api/establishments` sous `require_admin` effectif en runtime (la dette portée
+depuis la phase 3.1 est définitivement levée côté prod).
+
 ## 2026-05-31 — Chantier 4 phase C : frontend auth + verrouillage console (`v0.9.0-auth-frontend`)
 
 UI d'authentification complète : login mot de passe → flux 2 étapes (saisie code TOTP

@@ -21,6 +21,18 @@ Pose la fondation du repo. **Ne livre aucune fonctionnalité.**
 
 ## Phase N1 — Console lecture seule (cible : mi-juin 2026)
 
+> **🎯 Prochain chantier (validé 2026-06-06)** : les **écrans N1**, dans cet ordre :
+>
+> 1. **Dashboard fleet view** (vue d'ensemble des établissements supervisés)
+> 2. **Drill-down établissement** (détail d'un établissement)
+> 3. **Vue incidents modération**
+> 4. **Inventaire / rapports / réglages** (groupés)
+>
+> ⚠️ Règle non-négociable : **tous les endpoints backend servant ces écrans sont
+> créés d'emblée sous `Depends(require_admin)`** (cf section Plateforme/Auth +
+> JOURNAL chantier 4 phase C, et règle consignée lors du déploiement prod
+> du 2026-06-06). Pattern à copier : `POST /api/establishments`.
+
 Console de supervision **multi-établissements en lecture seule**. Livraison des
 **6 écrans** alimentés par les **10 données** remontées (cf ARCHITECTURE §2.1).
 
@@ -93,17 +105,17 @@ Suivi détaillé dans `docs/JOURNAL.md`. Pour rappel :
 
 - **Phase A — socle (`v0.7.0-auth-backend-password`, 31 mai 2026)** ✅
   livré : table `users`, login mdp, cookie session JWT, `/me`, `require_admin`.
-- **Phase B — MFA TOTP (`v0.8.0-auth-mfa-totp`, 31 mai 2026)** ✅
-  livré côté code : login 2 étapes, enrôlement TOTP + URI otpauth, codes de
-  récupération, lockout 5/15 min, chiffrement at-rest. Déploiement DialSup
-  séparé (commande par commande), cf `docs/RESILIENCE.md`.
-- **Phase C — frontend auth (`v0.9.0-auth-frontend`, 31 mai 2026)** ✅
-  livré côté code : UI login 2 étapes + enrôlement MFA (QR + saisie manuelle) +
-  10 codes de récupération avec gate "j'ai sauvegardé", bouton Déconnexion dans
-  la sidebar, route guard `<RequireAuth>` sur toutes les pages console, intercepteur
-  401 global. Backend : `POST /api/establishments` passe sous `require_admin`
-  (dette de la phase 3.1 levée). Déploiement DialSup groupé avec Phase B (séparé,
-  command-by-command).
+- **Phase B — MFA TOTP (`v0.8.0-auth-mfa-totp`, 31 mai 2026)** — **DÉPLOYÉ EN PROD (2026-06-06)** ✅
+  Login 2 étapes, enrôlement TOTP + URI otpauth, codes de récupération, lockout
+  5/15 min, chiffrement at-rest. Bascule DialSup détaillée dans `docs/JOURNAL.md`
+  (entrée 2026-06-06).
+- **Phase C — frontend auth (`v0.9.0-auth-frontend`, 31 mai 2026)** — **DÉPLOYÉ EN PROD (2026-06-06)** ✅
+  UI login 2 étapes + enrôlement MFA (QR + saisie manuelle) + 10 codes de
+  récupération avec gate "j'ai sauvegardé", bouton Déconnexion, route guard
+  `<RequireAuth>` sur toutes les pages console, intercepteur 401 global. Backend :
+  `POST /api/establishments` sous `require_admin` (dette phase 3.1 levée, effective
+  en runtime). Admin `gmd@dialeo.com` (id=1) enrôlé en MFA TOTP au 1er login
+  post-upgrade, 10 codes de récupération sauvegardés hors-bande.
 
 ### Règles à appliquer aux futurs chantiers N1
 
