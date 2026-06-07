@@ -1,8 +1,8 @@
 """Schemas d'entree/sortie pour les etablissements."""
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, Field
+
+from app.schemas._utc import UtcDatetime
 
 
 class EstablishmentCreate(BaseModel):
@@ -19,4 +19,4 @@ class EstablishmentCreated(BaseModel):
     id: int
     name: str
     api_key: str
-    created_at: datetime
+    created_at: UtcDatetime

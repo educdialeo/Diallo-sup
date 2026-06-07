@@ -11,6 +11,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas._utc import UtcDatetime
 from app.schemas.heartbeat import HeartbeatIn
 
 
@@ -172,7 +173,12 @@ IngestPayload = Annotated[
 
 
 class IngestAccepted(BaseModel):
-    """Accuse de reception uniforme (202)."""
+    """Accuse de reception uniforme (202).
+
+    `received_at` est emis en ISO UTC avec suffixe `Z` (cf app/schemas/_utc.py).
+    Le client M4 le relit en retour ; par conception il ne leve jamais
+    d'exception, donc le passage de "...654321" a "...654321Z" est inoffensif.
+    """
 
     type: str
-    received_at: datetime
+    received_at: UtcDatetime

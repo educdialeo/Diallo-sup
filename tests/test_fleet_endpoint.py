@@ -79,7 +79,12 @@ def test_fleet_without_heartbeat_is_silent(client, db_session, make_establishmen
 
 
 def test_fleet_dormant_detection(client, db_session, make_establishment):
-    """Heartbeat recent ok + zero session sur 14 j -> online + dormant."""
+    """Heartbeat recent ok + zero session sur 14 j -> online + dormant.
+
+    Verifie aussi (fix fuseau, 2026-06-07) que les datetimes de reponse sortent
+    en UTC explicite (suffixe Z) : `last_heartbeat_at` lu de DB (donc naïf)
+    et `generated_at` aware doivent etre coherents.
+    """
     etab = make_establishment("École Dormante")
     now = datetime.now(UTC)
     db_session.add(Heartbeat(
@@ -88,9 +93,12 @@ def test_fleet_dormant_detection(client, db_session, make_establishment):
     ))
     db_session.commit()
     _enroll_full(client, db_session)
-    item = client.get("/api/fleet").json()["items"][0]
+    body = client.get("/api/fleet").json()
+    item = body["items"][0]
     assert item["health"] == "online"
     assert item["is_dormant"] is True
+    assert item["last_heartbeat_at"].endswith("Z")
+    assert body["generated_at"].endswith("Z")
 
 
 def test_fleet_aggregates_usage_and_trend(client, db_session, make_establishment):

@@ -1,8 +1,8 @@
 """Schemas I/O pour l'auth admin."""
 
-from datetime import datetime
-
 from pydantic import BaseModel, ConfigDict, EmailStr
+
+from app.schemas._utc import UtcDatetime
 
 
 class LoginIn(BaseModel):
@@ -21,4 +21,4 @@ class UserOut(BaseModel):
     id: int
     email: EmailStr
     is_active: bool
-    last_login_at: datetime | None = None
+    last_login_at: UtcDatetime | None = None

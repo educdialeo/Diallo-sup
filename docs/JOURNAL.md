@@ -5,6 +5,68 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-07 — Fix fuseau : tous les datetimes API en UTC explicite (`v0.11.2-tz-utc`)
+
+**Bug** : un panneau « Daemon » affichait « dernière réussite : à l'instant /
+uptime 0 h » mais en-tête « périmé · il y a 2 h ». Diagnostic : le backend
+sérialisait certains datetimes **sans marqueur de fuseau** (`generated_at` avec
+`Z`, `last_heartbeat_at` sans) → incohérent. Le frontend parsait les ISO sans
+suffixe en heure **locale** → décalage CEST (+2 h) → données fraîches
+marquées « périmé ».
+
+**Cause technique** : SQLite n'a pas de TIMESTAMP avec fuseau → strip la tz au
+stockage → SQLAlchemy restitue des datetimes **naïves** que Pydantic v2
+sérialise **sans suffixe**. Seul `datetime.now(UTC)` direct (aware) sortait
+avec `Z`. D'où la moitié des champs incohérents.
+
+**Décision (scope élargi, assumé)** : ce n'était pas localisé à fleet — **tout
+champ datetime lu de DB** était concerné. Plutôt que de patcher coin par
+coin, fix à la racine : type Pydantic centralisé `UtcDatetime` (`app/schemas/_utc.py`)
+combinant `AfterValidator(_ensure_utc)` (wrap UTC si naïve) +
+`PlainSerializer(_format_utc_z)` (sortie `…Z` jamais `+00:00`). Swap
+`datetime` → `UtcDatetime` dans **tous** les schémas de réponse :
+`fleet.py`, `auth.py`, `establishment.py`, `heartbeat.py`, `ingest.py`.
+
+**Vérification critique avant code** : les datetimes issus du payload M4
+(`last_boot`, `last_success_iso`, `last_deploy_at`, `last_inference_at`) ne
+sont pas des datetimes DB — ils dépendent du fuseau émis par M4. Inspection
+prod 2026-06-07 dans `raw_pushes` :
+
+- `last_boot` : `"2026-05-21T16:30:20Z"` ✅ aware UTC
+- `last_success_iso` : `"2026-06-07T10:36:52+00:00"` ✅ aware UTC
+- `last_deploy_at` : null observé
+- `last_inference_at` : 0 ligne `ollama_status` en prod
+
+→ wrap UTC sera idempotent pour les valeurs observées. Si un futur M4 envoyait
+du naïve LOCAL, un nouveau décalage apparaîtrait — à reverifier le cas échéant.
+
+**Frontend** : helper `lib/staleness.ts::parseUtcIso` (belt-and-suspenders) :
+si la string n'a pas de marqueur (`Z`, `+HH:MM`, `-HH:MM`), append `Z` avant
+parsing. Utilisé dans `freshness`, `timeAgoShort`, et `EstablishmentTile`
+(remplace son ancien `new Date(iso)`). Protège aussi les timestamps issus du
+payload (chaînes brutes que `UtcDatetime` backend ne touche pas).
+
+**Tests** :
+
+- `tests/test_utc_serialization.py` : 7 cas (aware UTC, naïve, aware non-UTC,
+  ISO avec Z, ISO avec offset, ISO sans marqueur, None).
+- `tests/test_fleet_endpoint.py` et `test_fleet_detail.py` : assertions
+  `.endswith("Z")` sur `last_heartbeat_at`, `generated_at`, `machine.last_seen_at`,
+  `machine.last_boot`, `created_at`, `incidents_recent[*].received_at`.
+- `frontend/test/staleness.test.ts` : 5 nouveaux (parseUtcIso × 3 + freshness
+  filet fuseau × 2, dont reproduction du bug CEST « 1 min sans Z → recent
+  malgré local +2 h »).
+
+**Total** : **135 pytest verts** (128 + 7 nouveaux dans `test_utc_serialization.py` ;
+6 assertions `.endswith("Z")` ajoutées DANS des tests existants ne changent pas
+le compteur) ; **32 vitest verts** (27 + 5 nouveaux dans `staleness.test.ts`).
+
+Note compatibilité M4 : `HeartbeatAccepted.received_at` et
+`IngestAccepted.received_at` repartent vers M4 (le client lit le retour).
+Passage de `"…654321"` à `"…654321Z"` inoffensif — par conception, le client
+M4 ne lève jamais d'exception. Trace : ROADMAP § Dette technique (entrée
+« Timestamps SQLite » barrée RÉSOLU).
+
 ## 2026-06-07 — Filet permanent : test du payload prod éparse + leçon "vieux build"
 
 Session debug post-étape 2. Bug observé en prod : « Dashboard affiche Erreur de

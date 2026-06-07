@@ -5,6 +5,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas._utc import UtcDatetime
+
 
 class HeartbeatIn(BaseModel):
     """Corps d'un push de heartbeat (type minimal, membre de l'union d'ingestion).
@@ -26,6 +28,6 @@ class HeartbeatOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    timestamp: datetime
+    timestamp: UtcDatetime
     status: str
-    received_at: datetime
+    received_at: UtcDatetime

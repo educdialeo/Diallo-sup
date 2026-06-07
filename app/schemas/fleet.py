@@ -1,9 +1,11 @@
 """Schemas de sortie pour le Dashboard fleet view + page detail (chantier N1)."""
 
-from datetime import date, datetime
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel
+
+from app.schemas._utc import UtcDatetime
 
 # ============================================================================
 # Liste — GET /api/fleet
@@ -20,7 +22,7 @@ class FleetItem(BaseModel):
 
     # Sante live (calculee serveur)
     health: Literal["online", "degraded", "silent"]
-    last_heartbeat_at: datetime | None
+    last_heartbeat_at: UtcDatetime | None
 
     # Sessions live (dernier snapshot kind='live')
     nb_eleves_connected: int | None
@@ -40,7 +42,7 @@ class FleetItem(BaseModel):
 
 class FleetResponse(BaseModel):
     items: list[FleetItem]
-    generated_at: datetime
+    generated_at: UtcDatetime
 
 
 # ============================================================================
@@ -56,10 +58,10 @@ class FleetResponse(BaseModel):
 class MachineHealth(BaseModel):
     """Dernier `sante_systeme` re&ccedil;u (None si jamais re&ccedil;u)."""
 
-    last_seen_at: datetime | None = None
+    last_seen_at: UtcDatetime | None = None
     status_global: str | None = None
     uptime_seconds: int | None = None
-    last_boot: datetime | None = None
+    last_boot: UtcDatetime | None = None
     cpu_percent: float | None = None
     ram_used_mb: int | None = None
     ram_total_mb: int | None = None
@@ -72,27 +74,27 @@ class MachineHealth(BaseModel):
 class OllamaSnapshot(BaseModel):
     """Dernier `ollama_status` recu (0 ligne en prod au 2026-06-06)."""
 
-    last_seen_at: datetime | None = None
+    last_seen_at: UtcDatetime | None = None
     models_loaded: list[str] = []
     ping_latency_ms: float | None = None
     ram_used_mb: int | None = None
-    last_inference_at: datetime | None = None
+    last_inference_at: UtcDatetime | None = None
 
 
 class DialeoSnapshot(BaseModel):
     """Dernier `dialeo_status` re&ccedil;u."""
 
-    last_seen_at: datetime | None = None
+    last_seen_at: UtcDatetime | None = None
     version: str | None = None
     uvicorn_status: str | None = None
-    last_deploy_at: datetime | None = None
+    last_deploy_at: UtcDatetime | None = None
     modes_active: list[str] = []
 
 
 class DaemonSnapshot(BaseModel):
     """Dernier `daemon_uvicorn_health` (signal du daemon de surveillance M4)."""
 
-    last_seen_at: datetime | None = None
+    last_seen_at: UtcDatetime | None = None
     uvicorn_status: str | None = None  # "ok" | "ko" | "unknown"
     response_time_ms: int | None = None
     http_status: int | None = None
@@ -104,9 +106,9 @@ class DaemonSnapshot(BaseModel):
 class IncidentDetail(BaseModel):
     """Une ligne d'incident moderation (compteurs uniquement, JAMAIS de contenu)."""
 
-    received_at: datetime
-    window_start: datetime | None = None
-    window_end: datetime | None = None
+    received_at: UtcDatetime
+    window_start: UtcDatetime | None = None
+    window_end: UtcDatetime | None = None
     nb_refus_blacklist: int
     nb_refus_llamaguard: int
     nb_refus_systemprompt: int
@@ -126,12 +128,12 @@ class EstablishmentDetail(BaseModel):
     id: int
     name: str
     status: str
-    created_at: datetime
+    created_at: UtcDatetime
 
     # Sante live (meme calcul que la tuile -- cf dette ROADMAP : ne reflete
     # PAS encore la degradation au niveau service).
     health: Literal["online", "degraded", "silent"]
-    last_heartbeat_at: datetime | None
+    last_heartbeat_at: UtcDatetime | None
 
     # Live
     nb_eleves_connected: int | None
@@ -150,4 +152,4 @@ class EstablishmentDetail(BaseModel):
     usage_history: list[UsageDay]
 
     # Meta
-    generated_at: datetime
+    generated_at: UtcDatetime

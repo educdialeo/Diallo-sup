@@ -97,9 +97,12 @@ Prérequis transverses à la phase N2 :
 
 - **`POST /api/establishments` non protégé** (phase 3.1) → doit passer derrière
   **Cloudflare Access** avant toute exposition externe (cf ARCHITECTURE §7.1).
-- **Timestamps SQLite sans fuseau** (phase 3.1) → les datetimes sont en UTC mais
-  renvoyés sans suffixe `Z` (limitation SQLite). Donnée correcte, étiquetage à
-  normaliser si un client en a besoin.
+- ~~**Timestamps SQLite sans fuseau** (phase 3.1)~~ — **RÉSOLU 2026-06-07
+  (`v0.11.2-tz-utc`)** : type Pydantic centralisé `UtcDatetime` dans
+  `app/schemas/_utc.py` (BeforeValidator wrap UTC + PlainSerializer Z), appliqué
+  à TOUS les schémas de réponse (fleet, détail, auth, establishment, heartbeat,
+  ingest). Front : helper `parseUtcIso` pour traiter défensivement toute string
+  sans marqueur comme UTC. Cf JOURNAL 2026-06-07.
 - **Migrations** → encore en `create_all` ; introduire **Alembic** quand le schéma
   N1 se fige (`create_all` n'altère pas les tables existantes). Workaround
   ponctuel pour phase 4-B : `app/scripts/migrate_phase_b.py` (ALTER idempotent).

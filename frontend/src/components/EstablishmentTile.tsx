@@ -1,18 +1,16 @@
 import { Link } from 'react-router-dom'
 
 import type { FleetItem } from '../lib/fleet'
+import { timeAgoShort } from '../lib/staleness'
 import { Sparkline } from './Sparkline'
 import { StatusDot } from './StatusDot'
 
+// Adapte timeAgoShort en variante "Il y a X" (majuscule, "Jamais" capitalisé)
+// pour rester cohérent avec le style "Dernier signal : ..." de la tuile.
 function timeAgo(iso: string | null): string {
   if (!iso) return 'Jamais'
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000)
-  if (min < 1) return 'À l’instant'
-  if (min < 60) return `Il y a ${min} min`
-  const h = Math.floor(min / 60)
-  if (h < 24) return `Il y a ${h} h`
-  const d = Math.floor(h / 24)
-  return `Il y a ${d} j`
+  const s = timeAgoShort(iso)
+  return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function EstablishmentTile({ item }: { item: FleetItem }) {

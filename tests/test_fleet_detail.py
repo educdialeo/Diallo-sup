@@ -107,13 +107,19 @@ def test_detail_parses_machine_health_from_sante_systeme_payload(
     ))
     db_session.commit()
     _enroll_full(client, db_session)
-    m = client.get(f"/api/fleet/{etab['id']}").json()["machine"]
+    body = client.get(f"/api/fleet/{etab['id']}").json()
+    m = body["machine"]
     assert m["last_seen_at"] is not None
     assert m["status_global"] == "up"
     assert m["cpu_percent"] == 12.5
     assert m["ram_used_mb"] == 8000
     assert m["disk_used_gb"] == 120.0
     assert m["mac_serial"] == "C02XYZ"
+    # Fix fuseau : tous les datetimes de la reponse sortent avec Z.
+    assert m["last_seen_at"].endswith("Z")
+    assert m["last_boot"].endswith("Z")
+    assert body["generated_at"].endswith("Z")
+    assert body["created_at"].endswith("Z")
 
 
 def test_detail_parses_dialeo_status(client, db_session, make_establishment):
@@ -168,6 +174,9 @@ def test_detail_lists_incidents_with_breakdown(client, db_session, make_establis
     # Ordre desc par received_at -> plus recent en premier
     assert items[0]["nb_refus_blacklist"] == 3
     assert items[1]["nb_refus_llamaguard"] == 5
+    # Fix fuseau : received_at de chaque incident sort avec Z.
+    assert items[0]["received_at"].endswith("Z")
+    assert items[1]["received_at"].endswith("Z")
 
 
 def test_detail_health_uses_heartbeat_only_dette_consignee(
