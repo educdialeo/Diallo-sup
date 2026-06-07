@@ -127,6 +127,14 @@ Prérequis transverses à la phase N2 :
   build. Le panneau Ollama de la page détail est en place et lira la donnée
   quand elle arrivera ; en attendant l'UI affiche « Non rapporté ». À
   reconfirmer quand M4 émettra ce type.
+- **Déploiement frontend — toujours rebuild `frontend/dist/` sur DialSup**
+  (leçon 2026-06-07) : un bug « Dashboard affiche Erreur de chargement (HTTP 200) »
+  apparu en prod alors que la suite Vitest était verte localement, traceable
+  au fait qu'uvicorn DialSup sert `frontend/dist/` statique. Un `git pull` +
+  `kickstart` ne rebuilde PAS le SPA — il faut explicitement
+  `cd frontend && npm install && npm run build` puis recharger. Le hard-refresh
+  navigateur seul ne suffit pas si la dist/ servie est ancienne. À ajouter dans
+  la procédure de déploiement N1 (cf `docs/RESILIENCE.md` le moment venu).
 
 ---
 
