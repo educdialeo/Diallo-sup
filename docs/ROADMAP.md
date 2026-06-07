@@ -32,13 +32,19 @@ Pose la fondation du repo. **Ne livre aucune fonctionnalité.**
 >    Machine / Dialeo / Daemon / Ollama / Historique 30 j / Incidents 30 j ;
 >    chaque panneau marque sa propre fraîcheur (badge « périmé » côté UI,
 >    seuil 10 min). Tuile cliquable, polling 30 s. Cf JOURNAL 2026-06-06.
-> 3. **Vue incidents modération** — *prochain*
-> 4. **Inventaire / rapports / réglages** (groupés)
+> 3. **Vue incidents modération** — **LIVRÉ (`v0.12.0-incidents-overview`, 2026-06-07)** ✅
+>    `GET /api/incidents/overview` sous `require_admin`, vue d'agrégation flotte :
+>    KPI 7 j/30 j par catégorie (blacklist/llamaguard/systemprompt), tendance
+>    30 j par catégorie, top 10 établissements (drill cliquable), 50 derniers
+>    incidents. Aucun contenu utilisateur — compteurs uniquement. Nouvelle entrée
+>    nav « Modération » (icône ShieldAlert). Cf JOURNAL 2026-06-07.
+> 4. **Inventaire / rapports / réglages** (groupés) — *prochain*
 >
 > ⚠️ Règle non-négociable : **tous les endpoints backend servant ces écrans sont
 > créés d'emblée sous `Depends(require_admin)`** (cf section Plateforme/Auth +
-> JOURNAL chantier 4 phase C, règle confirmée par le chantier N1 étape 1).
-> Pattern à copier : `POST /api/establishments`, `GET /api/fleet`.
+> JOURNAL chantier 4 phase C, règle confirmée par les étapes 1, 2 et 3).
+> Pattern à copier : `POST /api/establishments`, `GET /api/fleet`,
+> `GET /api/incidents/overview`.
 
 Console de supervision **multi-établissements en lecture seule**. Livraison des
 **6 écrans** alimentés par les **10 données** remontées (cf ARCHITECTURE §2.1).

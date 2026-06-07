@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app import __version__
-from app.api import auth_admin, establishments, fleet, health, ingest
+from app.api import auth_admin, establishments, fleet, health, incidents, ingest
 from app.api.errors import register_exception_handlers
 from app.core.config import settings
 from app.core.db import init_db
@@ -69,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(ingest.router)
     app.include_router(auth_admin.router)
     app.include_router(fleet.router)
+    app.include_router(incidents.router)
     _mount_spa(app)
     return app
 

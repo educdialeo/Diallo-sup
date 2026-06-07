@@ -5,6 +5,60 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-07 — Chantier N1 étape 3 : Vue Modération (`v0.12.0-incidents-overview`)
+
+Écran dédié aux incidents de modération (argument de vente clé). Vue
+d'agrégation **flotte** (pas un dédoublonnage de la liste détail
+établissement). Toujours sous `Depends(require_admin)` dès le départ.
+
+**Backend** :
+
+- `GET /api/incidents/overview` (router `app/api/incidents.py`) renvoie un
+  `IncidentsOverview` typé.
+- Service `app/services/incidents.py` avec 4 helpers purs et testables :
+  `_totals_since`, `_trend_by_category` (3 séries de 30 ints chronologiques,
+  zéros remplis), `_top_establishments` (joint étabs, sort desc par total,
+  limite **10**), `_recent_incidents` (joint étabs, limite **50**, order by
+  `received_at` desc). Fenêtres : **7 j** (KPI court) et **30 j** (KPI long +
+  trend + top).
+- 7 nouveaux tests pytest : 401 sans/avec pre_auth, structure complète, cas
+  vide (totaux zéro + 30 zéros par catégorie + listes vides), totaux 7j vs
+  30j corrects, trend par catégorie, top sorted desc, recent desc + lien
+  établissement + suffixe `Z` (cohérent fix tz Phase 1).
+- AUCUN contenu utilisateur — compteurs uniquement. Conforme RGPD/cadrage
+  bloc 4.1.
+
+**Frontend** :
+
+- Nouvelle page `src/pages/Moderation.tsx` (route `/moderation` sous
+  `<RequireAuth>`), `usePolling(30 s)`.
+- Sections : bandeau **KPI 4 cartes** (Total / Blacklist / LlamaGuard /
+  System prompt, chiffre 30 j en gros + chiffre 7 j en dessous), **Tendance
+  30 j par catégorie** (3 `Sparkline` empilées avec total période),
+  **Top établissements 30 j** (tableau cliquable → page détail étab),
+  **Derniers incidents** (tableau, nom étab cliquable, `timeAgoShort`
+  pour `received_at`). États : loading / empty / populated.
+- Nouvelle entrée **« Modération »** dans la sidebar (icône `ShieldAlert`
+  lucide-react), placée **avant Reports** dans le cluster supervision
+  (Dashboard → Vue établissement → Modération → Reports → Déploiements →
+  Inventaire → Réglages). `NAV_ITEMS` passe de 6 à **7 entrées**.
+  Test app.test.tsx adapté en conséquence.
+- 3 nouveaux tests Vitest : empty (totaux 0 → message), populated (KPI +
+  rubriques), liens cliquables vers les pages détail établissement.
+
+**Extension du seed** (`app/scripts/seed_fleet.py`) : la matrice _FIXTURES
+gagne des incidents pour **4 étabs** au lieu de 1 (École Tilleuls, Lycée
+Démo, Collège Voltaire en plus de Collège Renoir), ventilation différenciée
+par catégorie pour démontrer KPI, tendance et top. **École Saint-Pierre**
+reste à 0 (cas « tout propre »). Garde-fou anti-prod préservé.
+
+**Tests totaux** : **142 pytest verts** (135 + 7) ; **35 vitest verts**
+(32 + 3). ruff/eslint/build clean.
+
+**Hors scope respecté et consigné** : visualiseur du contenu reports (exclu
+RGPD), filtres avancés / export CSV / configuration de seuils / notifications
+email (v2+), WebSockets/SSE, modification de l'ingestion, ZÉRO touche M4.
+
 ## 2026-06-07 — Fix fuseau : tous les datetimes API en UTC explicite (`v0.11.2-tz-utc`)
 
 **Bug** : un panneau « Daemon » affichait « dernière réussite : à l'instant /

@@ -181,15 +181,15 @@ _FIXTURES = [
     # (nom, hb_min, hb_status, eleves, classes, historique_dense, incidents,
     #  machine_min_ago | None, dialeo_uvicorn_status | None, daemon_status | None,
     #  daemon_consecutive_failures)
-    # online — snapshots tous frais
+    # online — snapshots frais, zéro incident (cas "tout propre")
     ("École Saint-Pierre",  1, "ok",   42, 3, True,  0,   1, "up",  "ok",     0),
-    # degraded (8 min HB) — machine sante "up" mais HB un peu vieux
-    ("Collège Voltaire",    8, "ok",   12, 1, True,  0,   1, "up",  "ok",     0),
-    # silent (30 min HB) — pas de snapshots récents
-    ("École Tilleuls",     30, "ok",   None, None, False, 0,  None, None, None,   0),
-    # online + dormant — snapshots OK mais zero session
-    ("Lycée Démo",          1, "ok",   None, None, False, 0,  2,   "up",  "ok",   0),
-    # online + INCIDENTS (3 lignes ventilées) + daemon en alerte
+    # degraded (8 min HB) + 2 incidents pour étoffer la vue Modération (étape 3)
+    ("Collège Voltaire",    8, "ok",   12, 1, True,  2,   1, "up",  "ok",     0),
+    # silent (30 min HB) + 1 incident ancien (~25 j) — silent peut avoir un historique
+    ("École Tilleuls",     30, "ok",   None, None, False, 1,  None, None, None,   0),
+    # online + dormant + 1 incident isolé (llamaguard uniquement)
+    ("Lycée Démo",          1, "ok",   None, None, False, 1,  2,   "up",  "ok",   0),
+    # online + 3 INCIDENTS ventilés + daemon en alerte (cas "top du classement")
     ("Collège Renoir",      2, "ok",   25, 2, True,  3,   1, "up",  "ko",     3),
 ]
 
@@ -235,9 +235,19 @@ def seed(db) -> None:
                 consecutive_failures=daemon_failures,
             )
 
-        # Plusieurs incidents (ventilation differenciee) pour Collège Renoir.
+        # Incidents — réparti par nb_incidents souhaité. Ventilations
+        # différenciées pour démontrer la vue Modération (chantier N1 étape 3) :
+        # KPI par catégorie + tendance + top établissements.
         if incidents_count == 1:
-            _add_incident(db, etab.id, hours_ago=20, blacklist=7)
+            # Cas isolé : 1 refus llamaguard récent OU 1 refus ancien blacklist
+            # selon l'étab (silent vs dormant) -> on prend le nom comme heuristique.
+            if name.startswith("École Tilleuls"):
+                _add_incident(db, etab.id, hours_ago=25 * 24, blacklist=2)  # ~25 j
+            else:
+                _add_incident(db, etab.id, hours_ago=12, llamaguard=4)
+        elif incidents_count == 2:
+            _add_incident(db, etab.id, hours_ago=6,  blacklist=1, systemprompt=2)
+            _add_incident(db, etab.id, hours_ago=48, llamaguard=3)
         elif incidents_count >= 3:
             _add_incident(db, etab.id, hours_ago=4,  blacklist=3, llamaguard=1)
             _add_incident(db, etab.id, hours_ago=28, blacklist=0, llamaguard=2, systemprompt=1)
