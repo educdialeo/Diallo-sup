@@ -27,6 +27,13 @@ d'agrégation **flotte** (pas un dédoublonnage de la liste détail
   établissement + suffixe `Z` (cohérent fix tz Phase 1).
 - AUCUN contenu utilisateur — compteurs uniquement. Conforme RGPD/cadrage
   bloc 4.1.
+- **Bucketage `trend_30d` en jour UTC, pas local** : `_trend_by_category`
+  agrège par `received_at.date()` qui est une date UTC (SQLite stocke naïf,
+  la valeur représente UTC). Conséquence UX en CEST : un incident à
+  23:30 UTC (= 01:30 CEST le lendemain) apparaît dans le bucket UTC du jour
+  J alors que l'utilisateur local le voit en J+1. Raffinement « bucketage
+  jour-local utilisateur » = v2 (nécessite un fuseau côté backend ou un
+  re-bucketage côté front).
 
 **Frontend** :
 

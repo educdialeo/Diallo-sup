@@ -27,12 +27,13 @@ describe('App', () => {
     // Wordmark de la sidebar (rendu sous RequireAuth car authentifié).
     expect(await screen.findByText('DiALEO')).toBeInTheDocument()
 
-    // Les 7 entrées de la navigation principale (Modération ajoutée en étape 3 N1).
+    // Les 7 entrées de la navigation principale dans l'ordre RÉEL de la sidebar
+    // (Modération en cluster supervision, avant Reports — décision étape 3).
     const nav = within(screen.getByRole('navigation', { name: 'Navigation principale' }))
     expect(nav.getByText('Dashboard global')).toBeInTheDocument()
     expect(nav.getByText('Vue établissement')).toBeInTheDocument()
-    expect(nav.getByText('Reports')).toBeInTheDocument()
     expect(nav.getByText('Modération')).toBeInTheDocument()
+    expect(nav.getByText('Reports')).toBeInTheDocument()
     expect(nav.getByText('Déploiements N2')).toBeInTheDocument()
     expect(nav.getByText('Inventaire / licences')).toBeInTheDocument()
     expect(nav.getByText('Réglages console')).toBeInTheDocument()
