@@ -38,13 +38,33 @@ Pose la fondation du repo. **Ne livre aucune fonctionnalité.**
 >    30 j par catégorie, top 10 établissements (drill cliquable), 50 derniers
 >    incidents. Aucun contenu utilisateur — compteurs uniquement. Nouvelle entrée
 >    nav « Modération » (icône ShieldAlert). Cf JOURNAL 2026-06-07.
-> 4. **Inventaire / rapports / réglages** (groupés) — *prochain*
+> 4. **Inventaire / rapports / réglages** (groupés) — **LIVRÉ (`v0.13.0-inventory-reports-settings`, 2026-06-07)** ✅
+>    3 endpoints sous `require_admin` :
+>    - `GET /api/inventory/overview` : 1 ligne / étab depuis dernier `raw_push`
+>      `inventaire` + agrégats (nb étabs, total sièges, par formule).
+>    - `GET /api/reports/overview` : KPI 7 j/30 j, ventilations par niveau et
+>      par mode, top 10 émetteurs, **50 derniers reports anonymisés**
+>      (date + étab + niveau + mode, **AUCUN contenu**).
+>    - `GET /api/settings/overview` : config runtime lecture seule, secrets
+>      exposés en booléens uniquement (`*_configured`).
+>
+>    🛡️ Défense en profondeur : `_recent_reports` fait un **SELECT explicite
+>    des seules colonnes sûres** ; les colonnes contenu (question / réponse /
+>    note enseignant) ne sont JAMAIS chargées par cette page. Test dédié
+>    `test_recent_reports_NEVER_leak_content`.
+>
+>    ⚖️ **Point ouvert RGPD** : la liste anonymisée des derniers reports est
+>    présentée mais reste **à valider juriste**. Bandeau RGPD ambré permanent
+>    en tête de la page Rapports. Cf JOURNAL 2026-06-07.
+>
+> **🎯 Phase N1 lecture seule terminée code-only** (7 écrans livrés). Reste à
+> déployer le tout sur DialSup en mini-chantier dédié.
 >
 > ⚠️ Règle non-négociable : **tous les endpoints backend servant ces écrans sont
 > créés d'emblée sous `Depends(require_admin)`** (cf section Plateforme/Auth +
-> JOURNAL chantier 4 phase C, règle confirmée par les étapes 1, 2 et 3).
+> JOURNAL chantier 4 phase C, règle confirmée par les étapes 1, 2, 3 et 4).
 > Pattern à copier : `POST /api/establishments`, `GET /api/fleet`,
-> `GET /api/incidents/overview`.
+> `GET /api/incidents/overview`, `GET /api/reports/overview`.
 
 Console de supervision **multi-établissements en lecture seule**. Livraison des
 **6 écrans** alimentés par les **10 données** remontées (cf ARCHITECTURE §2.1).

@@ -21,7 +21,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.db import SessionLocal, init_db
 from app.core.security import generate_api_key, hash_api_key
-from app.models import Etablissement, Heartbeat, Incident, RawPush, SessionRecord
+from app.models import Etablissement, Heartbeat, Incident, RawPush, Report, SessionRecord
 
 _PROD_DB_PATH = Path("/Users/serveur/Projects/Diallo-sup/data/diallo_sup.db")
 _DEFAULT_URL = "sqlite:///./data/diallo_sup.db"
@@ -152,6 +152,50 @@ def _add_dialeo_status(
     ))
 
 
+def _add_inventaire(
+    db, etab_id: int,
+    *, mac_model: str, macos: str, sieges: int, formule: str,
+    days_since_changed: int = 30,
+) -> None:
+    """Ajoute un raw_push 'inventaire' realiste pour demontrer la page Inventaire."""
+    now = _now()
+    db.add(RawPush(
+        etablissement_id=etab_id,
+        type="inventaire",
+        timestamp_client=now, received_at=now,
+        payload={
+            "type": "inventaire",
+            "timestamp": now.isoformat(),
+            "mac_mini_model": mac_model,
+            "macos_version": macos,
+            "capacite_declaree_sieges": sieges,
+            "formule_commerciale": formule,
+            "last_changed_at": (now - timedelta(days=days_since_changed)).isoformat(),
+        },
+    ))
+
+
+def _add_report(
+    db, etab_id: int,
+    *, days_ago: int, niveaux: list[str], mode: str,
+    question: str = "Q exemple seed (non affichee)",
+    reponse: str = "R exemple seed (non affichee)",
+    note: str | None = None,
+) -> None:
+    """Ajoute un report (table dediee). Le contenu n'est jamais affiche dans l'UI
+    (defense en profondeur cote service reports), mais doit etre present en BDD."""
+    received = _now() - timedelta(days=days_ago)
+    db.add(Report(
+        etablissement_id=etab_id,
+        received_at=received,
+        date_jour=received.date(),
+        question=question, reponse=reponse,
+        mode_pedagogique=mode,
+        niveau_scolaire=niveaux,
+        note_enseignant=note,
+    ))
+
+
 def _add_daemon_uvicorn_health(
     db, etab_id: int,
     minutes_ago: int = 1,
@@ -175,6 +219,44 @@ def _add_daemon_uvicorn_health(
             "last_success_iso": ts.isoformat() if uvicorn_status == "ok" else None,
         },
     ))
+
+
+# --- Inventaire (chantier N1 etape 4) ---------------------------------------
+#
+# OPTION A (defaut) — `formule_commerciale` = vraies formules commerciales
+# Dialeo (Essentiel / Confort / Maitrise). L'agregat UI s'appelle alors
+# naturellement « par formule commerciale ».
+#
+# OPTION B — `formule_commerciale` = type d'etablissement (école / collège /
+# lycée). Dans ce cas, l'agregat UI doit etre relabel « par type
+# d'etablissement » (le NOM du champ Pydantic ne bouge pas, seul son CONTENU
+# change). C'est l'option presentee a l'arbitrage au Point 2.
+#
+# Pour basculer en Option B : remplacer les valeurs ci-dessous par
+#   "école primaire" / "collège" / "lycée" et adapter le label UI.
+_INVENTAIRES = {
+    "École Saint-Pierre": ("Mac mini M4", "15.5", 30, "Essentiel"),
+    "Collège Voltaire":   ("Mac mini M4", "15.4", 50, "Confort"),
+    "École Tilleuls":     ("Mac mini M2", "14.7", 20, "Essentiel"),
+    "Lycée Démo":         ("Mac mini M4", "15.5", 80, "Maîtrise"),
+    "Collège Renoir":     ("Mac mini M4", "15.5", 60, "Confort"),
+}
+
+# --- Reports (chantier N1 etape 4) ------------------------------------------
+#
+# Seed minimal pour demontrer la page Rapports : ventilation par niveau et par
+# mode pedagogique. Le contenu (question/reponse/note) est factice et N'EST
+# PAS affiche cote UI (defense en profondeur dans app/services/reports.py).
+_REPORTS = [
+    # (nom_etab, days_ago, niveaux, mode)
+    ("École Saint-Pierre",  1, ["CM1"],         "dialogue"),
+    ("École Saint-Pierre",  2, ["CM2"],         "quiz"),
+    ("École Saint-Pierre",  4, ["CM1", "CM2"],  "dialogue"),
+    ("Collège Voltaire",    1, ["6e"],          "dialogue"),
+    ("Collège Voltaire",    3, ["5e", "4e"],    "explication"),
+    ("Collège Renoir",      2, ["3e"],          "dialogue"),
+    ("Collège Renoir",      5, ["4e"],          "quiz"),
+]
 
 
 _FIXTURES = [
@@ -253,7 +335,35 @@ def seed(db) -> None:
             _add_incident(db, etab.id, hours_ago=28, blacklist=0, llamaguard=2, systemprompt=1)
             _add_incident(db, etab.id, hours_ago=72, blacklist=5)
 
+        # Inventaire (chantier N1 etape 4).
+        inv = _INVENTAIRES.get(name)
+        if inv is not None:
+            model, macos, sieges, formule = inv
+            _add_inventaire(
+                db, etab.id,
+                mac_model=model, macos=macos, sieges=sieges, formule=formule,
+            )
+
         print(f"  ✓ {name} créé")
+
+    # Reports (chantier N1 etape 4) — apres creation des etabs pour disposer des IDs.
+    name_to_id = {
+        e.name: e.id
+        for e in db.scalars(select(Etablissement)).all()
+    }
+    for etab_name, days_ago, niveaux, mode in _REPORTS:
+        etab_id = name_to_id.get(etab_name)
+        if etab_id is None:
+            continue
+        # Idempotence basique : skip si on a deja autant de reports pour cet etab.
+        from sqlalchemy import func as _func
+        existing = db.scalar(
+            select(_func.count()).select_from(Report).where(Report.etablissement_id == etab_id)
+        )
+        # On ne re-insere pas en double quand seed est relance.
+        if existing and existing >= sum(1 for r in _REPORTS if r[0] == etab_name):
+            continue
+        _add_report(db, etab_id, days_ago=days_ago, niveaux=niveaux, mode=mode)
     db.commit()
 
 

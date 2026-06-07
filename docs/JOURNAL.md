@@ -5,6 +5,86 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-07 — Chantier N1 étape 4 : Inventaire / Rapports / Réglages (`v0.13.0-inventory-reports-settings`)
+
+Dernier chunk N1 — 3 pages groupées. La phase N1 (console lecture seule
+multi-établissements, 7 écrans) est livrée code-only ; déploiement séparé
+plus tard.
+
+**Backend** :
+
+- **3 endpoints distincts sous `require_admin`** (pattern cohérent
+  fleet/incidents) : `GET /api/inventory/overview` · `GET /api/reports/overview` ·
+  `GET /api/settings/overview`.
+- `app/services/inventory.py` : 1 ligne/établissement avec dernier `raw_push`
+  `inventaire` (réutilise `_last_raw_push` de fleet) + agrégats (nb étabs,
+  total sièges, répartition par formule).
+- `app/services/reports.py` : agrégats sur la table `reports` (totals 7j/30j,
+  ventilation `by_niveau` et `by_mode`, top 10 émetteurs, 50 derniers).
+- `app/services/settings.py` : configuration runtime lecture seule, depuis
+  `app.core.config.settings` + `app.__version__`. **Aucune valeur de secret
+  exposée** — uniquement `jwt_secret_configured: bool` et
+  `totp_at_rest_key_configured: bool`.
+- Conflit de nom évité dans `main.py` :
+  `from app.api.settings import router as settings_router` (le module router
+  ne collisionne pas avec l'instance `settings` de `app.core.config`).
+
+**🛡️ Défense en profondeur sur les Reports (non-négociable)** :
+`_recent_reports` fait un **SELECT EXPLICITE** des seules colonnes sûres
+(`id`, `received_at`, `date_jour`, `etablissement_id`, `niveau_scolaire`,
+`mode_pedagogique`). Les colonnes contenu (`question`, `reponse`,
+`note_enseignant`) **ne sont JAMAIS chargées** — même un bug d'UI ne peut
+pas leaker le contenu. Test dédié (`test_recent_reports_NEVER_leak_content`)
+injecte des marqueurs sensibles uniques et vérifie leur absence du payload
+brut + l'absence des clés dans chaque ligne `recent`.
+
+**🛡️ Défense en profondeur sur les Settings** : test dédié
+(`test_settings_never_leak_secret_values`) vérifie que la valeur JWT_SECRET
+et la clé Fernet n'apparaissent jamais dans le payload, et qu'aucune clé
+exposée ne contient le mot « secret » ou « key » (sauf suffixe
+`_configured`).
+
+**Frontend** : 3 placeholders remplacés (`Inventory.tsx`, `Reports.tsx`,
+`Settings.tsx`). Réutilisation `usePolling` 30 s, `timeAgoShort`, charte
+chalkboard, sentence case. La page Rapports porte un **bandeau RGPD ambré
+permanent** en tête : « Le contenu détaillé des reports … n'est pas
+visualisable… ». La page Réglages n'a **aucun bouton de modification** ;
+mention explicite « Modification via `.env` + redémarrage launchd ».
+
+**⚖️ Point juridique à valider (RGPD)** : la **liste anonymisée des derniers
+reports** (date + établissement + niveaux + mode pédagogique, **sans aucun
+contenu utilisateur**) est exposée dans la page Rapports. C'est défendable
+(métadonnées techniques, pas de Q/R, pas de note enseignant, pas de prénom),
+mais à confirmer avec le juriste au même titre que le visualiseur de contenu.
+**Si refus juriste** : retirer le composant `RecentCard` de
+`pages/Reports.tsx` (le backend continuera de la calculer ; supprimer aussi
+`recent` de `ReportsOverview` Pydantic + ajuster les tests).
+
+**Seed étendu** :
+
+- 5 inventaires (1/étab, **Option A retenue** : formules commerciales
+  Essentiel / Confort / Maîtrise — total 240 sièges, répartition `{Essentiel: 2,
+  Confort: 2, Maîtrise: 1}`). Une variante Option B (types d'étab école /
+  collège / lycée) est documentée dans un bloc commenté juste au-dessus de
+  `_INVENTAIRES` pour basculer en 30 s si la décision change.
+- 7 reports répartis sur 3 étabs (Saint-Pierre 3, Voltaire 2, Renoir 2),
+  ventilation par niveaux et modes pour démontrer agrégats UI. Le contenu
+  factice (Q/R) est présent en BDD mais **jamais affiché** côté UI.
+
+**Bump de `__version__`** : `app/__init__.py` passe de `"0.1.0"` (figé depuis
+le chantier 0) à `"0.13.0"`, aligné sur le tag courant. La page Réglages
+l'expose. À refaire à chaque bump de tag.
+
+**Tests** : **157 pytest verts** (142 pré-étape + **15 nouveaux** : 4 inventory + 6 reports + 5 settings) ; **46 vitest verts** (35 pré-étape + **11 nouveaux** : 4 inventory + 4 reports + 3 settings). ruff/eslint/build clean.
+
+**Hors scope respecté** : visualiseur contenu reports (RGPD), mutation des
+réglages depuis l'UI (passe par `.env`+launchd), ajout/édition d'étab depuis
+l'UI, export CSV, **ZÉRO touche M4**.
+
+**🎯 Phase N1 lecture seule terminée code-only** (7 écrans livrés). Reste à
+déployer le tout sur DialSup en mini-chantier séparé (`git pull` + `pip` +
+`npm run build` + `kickstart`, command-by-command comme convenu).
+
 ## 2026-06-07 — Chantier N1 étape 3 : Vue Modération (`v0.12.0-incidents-overview`)
 
 Écran dédié aux incidents de modération (argument de vente clé). Vue
