@@ -100,4 +100,34 @@ describe('Dashboard', () => {
       await screen.findByText(/Tous les établissements sont silencieux/i),
     ).toBeInTheDocument()
   })
+
+  // Filet permanent : ce payload est la réponse RÉELLE de prod 2026-06-07
+  // (établissement unique, idle/silencieux, plein de null). À ne JAMAIS retirer.
+  it('rend la grille pour le payload prod réel éparse (1 étab silent, nulls)', async () => {
+    mockFleet([
+      {
+        id: 1,
+        name: 'Dialeo Pilote 001',
+        status: 'active',
+        health: 'silent',
+        last_heartbeat_at: '2026-06-01T17:01:21.050934', // sans Z (SQLite)
+        nb_eleves_connected: null,
+        nb_classes_active: null,
+        sessions_total: 0,
+        sessions_7j: 0,
+        nb_eleves: 0,
+        duree_moyenne_min: null,
+        trend_14d: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        incidents_recent: 0,
+        is_dormant: false,
+      },
+    ])
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>,
+    )
+    expect(await screen.findByText('Dialeo Pilote 001')).toBeInTheDocument()
+    expect(screen.queryByText(/Erreur de chargement/i)).not.toBeInTheDocument()
+  })
 })

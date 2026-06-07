@@ -5,6 +5,26 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-07 — Filet permanent : test du payload prod éparse + leçon "vieux build"
+
+Session debug post-étape 2. Bug observé en prod : « Dashboard affiche Erreur de
+chargement (HTTP 200) » malgré la suite Vitest verte. Hypothèse initiale (du
+ticket) : le validateur frontend rejette les `null`. **Hypothèse réfutée** par
+un test Vitest qui injecte EXACTEMENT le payload prod (1 étab silent,
+`nb_eleves_connected`/`nb_classes_active`/`duree_moyenne_min` à `null`,
+`last_heartbeat_at` sans suffixe Z) → le test **passe** ; les types TS
+autorisaient déjà `null` et le rendu utilise déjà `?? '—'`.
+
+**Cause réelle identifiée** : la `frontend/dist/` servie par uvicorn DialSup
+était ANTÉRIEURE aux versions v0.10/v0.11 (Dashboard fleet + détail). Un
+`git pull` + `kickstart` ne rebuilde PAS le SPA — il faut explicitement
+`npm run build` côté frontend pour que la dist/ soit régénérée.
+
+**Décision** : on garde le test comme **filet permanent** (le payload réel
+éparse doit toujours passer, même si la cause initiale était ailleurs).
+**Leçon consignée** dans `docs/ROADMAP.md § Dette technique connue` :
+toujours rebuilder le frontend lors d'un déploiement DialSup.
+
 ## 2026-06-06 — Chantier N1 étape 2 : Drill-down établissement (`v0.11.0-establishment-detail`)
 
 Page détail atteinte en cliquant une tuile du Dashboard. Réutilise l'infra
