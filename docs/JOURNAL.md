@@ -5,6 +5,48 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-06-27 — Vérification déploiement prod N1 (`v0.13.0` déjà live)
+
+Vérification de mise en production de la phase N1 (console lecture seule
+multi-établissements, 7 écrans, auth B+C). **Aucun déploiement actif
+nécessaire** : pas de `git pull`, pas de `pip install`, pas de
+`npm run build` effectif, pas de `launchctl kickstart`. La N1 était déjà
+en prod ; cette entrée ne fait que constater et acter l'état.
+
+**Constat backend** :
+
+- Version **v0.13.0 servie** par le process en cours (openapi `info.version`),
+  cohérente avec `app/__init__.py` et le tag
+  `v0.13.0-inventory-reports-settings`.
+- Service launchd `com.diallosup.uvicorn` `running`, **PID stable (445)**,
+  port 8000 — **remonté seul au boot** après extinction du M1.
+- Baselines vérifiées : `GET /health` → 200 ; `POST /api/ingest` sans token
+  → 401 (auth active).
+
+**Constat frontend** :
+
+- `frontend/dist/` **à jour** : `npm run build` relancé à titre de contrôle,
+  **build reproductible** (`✓ 1630 modules transformed`), hash du bundle JS
+  **inchangé** (`assets/index-BozhtiNO.js`). L'écart de mtime de 41 s
+  observé était l'artefact « build → puis commit » du 2026-06-07, pas une
+  péremption.
+
+**État fonctionnel** :
+
+- **7 écrans N1 live sur données réelles M4.** Les tables `incidents` et
+  `reports` sont **vides** — jamais alimentées par le M4 à ce jour : les
+  écrans correspondants sont donc réels et opérationnels mais s'affichent
+  sans données.
+- **MFA actif** ; admin **gmd@dialeo.com** enrôlé.
+
+**Dette notée (hors déploiement, à traiter à froid)** :
+
+- **6 vulnérabilités `npm audit`** (2 low / 1 moderate / 2 high / 1 critical)
+  dans l'arbre de dépendances frontend. Non bloquant pour build/déploiement ;
+  `npm audit fix` **non exécuté** (modifierait le lockfile).
+
+---
+
 ## 2026-06-07 — Chantier N1 étape 4 : Inventaire / Rapports / Réglages (`v0.13.0-inventory-reports-settings`)
 
 Dernier chunk N1 — 3 pages groupées. La phase N1 (console lecture seule
