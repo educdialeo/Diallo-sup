@@ -5,6 +5,52 @@ Référence : tags annotés sur `main`. Détails techniques dans le commit / les
 
 ---
 
+## 2026-07-19 — Clôture définitive du projet (`v1.0.0-final-cloture`)
+
+**Dernier commit du projet. Plus aucun développement après celui-ci.** Le repo est
+figé pour être auto-explicatif : README réécrit, `DECISIONS.md` créé, `ROADMAP.md`
+annoté `NON POURSUIVI`.
+
+**Raison de l'arrêt** : le produit **Dialeo** (l'assistant IA en établissement,
+repo principal) est arrêté. DialSup, sa console de supervision, n'a donc plus d'objet.
+Le code reste en l'état, la prod continue de tourner tant que le Mac mini est allumé,
+mais rien ne sera plus ajouté.
+
+**État atteint** :
+
+- **Phase N1 lecture seule livrée ET déployée** : 7 écrans (Dashboard fleet,
+  Établissement + drill-down, Rapports, Modération, Déploiements N2 [vue préparatoire],
+  Inventaire, Réglages), alimentés par les push M4. Runtime en prod : **v0.13.0**.
+- **Auth admin A + B + C : DÉPLOYÉE en prod**, pas seulement mergée. Séquence :
+  - Phase A (`v0.7.0`, mot de passe) déployée ;
+  - **Phases B (MFA TOTP, `v0.8.0`) + C (frontend auth, `v0.9.0`) déployées ensemble
+    le 2026-06-06** (cf entrée « Déploiement prod chantier 4 » plus bas) — MFA admin
+    `gmd@dialeo.com` enrôlé, console verrouillée en runtime ;
+  - N1 (`v0.10.0`→`v0.13.0`) empilée **par-dessus** cette base déjà déployée.
+
+**⚠️ Repère explicite pour un futur lecteur (anti-contresens)** : il n'existe **AUCUNE
+phase « mergée mais jamais déployée »**. Tout ce qui est sur `main` **tourne en prod**.
+L'auth MFA n'est pas un code dormant : elle a été activée le 2026-06-06 et sert v0.13.0
+aujourd'hui. Ne pas « redéployer » B/C en croyant combler un trou : il n'y en a pas.
+
+**État fonctionnel des données** : les tables `incidents` et `reports` sont **vides**
+(jamais alimentées par le M4 à ce jour) — les écrans correspondants sont réels et
+opérationnels mais s'affichent sans données. Cf entrée 2026-06-27.
+
+**Décisions & points ouverts** : consignés dans le nouveau `docs/DECISIONS.md`, dont
+deux points **jamais tranchés ni documentés dans le code** (watchdog externe de liveness ;
+arbitrage hébergement Mac mini local vs cloud souverain EU) — repris depuis des
+discussions non versionnées du 27/06/2026.
+
+**Dette non traitée (gelée avec le projet)** : 6 vulnérabilités `npm audit` (2 high /
+1 critical) ; throttling login absent ; Alembic jamais introduit ; Cloudflare Tunnel/Access
+jamais connecté. Détail dans `DECISIONS.md` et `ROADMAP.md`.
+
+Aucun changement de code dans ce chantier — **documentation uniquement**. Tag annoté
+`v1.0.0-final-cloture` (le `v1.0.0` marque la clôture, pas une nouvelle feature).
+
+---
+
 ## 2026-06-27 — Vérification déploiement prod N1 (`v0.13.0` déjà live)
 
 Vérification de mise en production de la phase N1 (console lecture seule

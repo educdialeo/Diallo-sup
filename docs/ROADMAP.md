@@ -3,6 +3,15 @@
 > Phasage acté au cadrage du **23 mai 2026**. Les dates sont des cibles, pas des
 > engagements contractuels. Référence d'architecture : [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+> ## 🛑 PROJET CLÔTURÉ LE 2026-07-19 (`v1.0.0-final-cloture`)
+>
+> Le produit **Dialeo** est arrêté ; sa console de supervision DialSup n'a plus
+> d'objet. **Aucun chantier de ce document ne sera poursuivi.** Le contenu
+> ci-dessous est **conservé tel quel** à titre d'archive : ce qui était livré reste
+> marqué ✅, ce qui restait ouvert est marqué **`NON POURSUIVI`**. Pour l'état final
+> et les décisions, voir [`JOURNAL.md`](./JOURNAL.md) (entrée 2026-07-19) et
+> [`DECISIONS.md`](./DECISIONS.md).
+
 ---
 
 ## Chantier 0 — Fondation (23 mai 2026) ✅ *ce chantier*
@@ -84,9 +93,19 @@ Grandes briques à construire :
   format compact), A4 (anomalies), A5 (exports).
 - **Accès** : connexion de **Cloudflare Tunnel + Access (Email OTP)**.
 
+> **NON POURSUIVI (clôture 2026-07-19)** — Les 7 écrans lecture seule ont été livrés
+> et déployés (v0.10→v0.13). En revanche, **`SSE` temps réel**, la **table `audit_log`
+> (A2-A5)** et la **connexion Cloudflare Tunnel + Access** sont restées **ouvertes et
+> ne seront pas construites**. L'auth admin maison (chantier 4, déployée) a tenu lieu
+> de verrou en l'absence de Cloudflare Access.
+
 ---
 
-## Phase N2 — Pilotage actif (cible : fin juin → début juillet 2026)
+## Phase N2 — Pilotage actif (cible : fin juin → début juillet 2026) — 🛑 NON POURSUIVI
+
+> **Jamais entamée.** La phase N2 (pilotage actif : push distant + garde-fous) n'a fait
+> l'objet d'aucun code. Seul l'écran **Déploiements** existe côté front en **vue
+> préparatoire** (placeholder N1). Contenu conservé ci-dessous à titre d'archive.
 
 Les **4 actions** sont livrées **une par une**, chacune sous les **5 garde-fous**
 (signature crypto, validation préalable, canary 12 h / 24-48 h, rollback auto,
@@ -108,7 +127,9 @@ Prérequis transverses à la phase N2 :
 
 ---
 
-## Hors phasage / ultérieur
+## Hors phasage / ultérieur — 🛑 NON POURSUIVI
+
+> Pistes ultérieures **jamais activées**, conservées à titre d'archive.
 
 - Console **multi-utilisateurs** effective (le modèle est prêt dès N1, l'activation
   viendra quand le besoin réel apparaît).
@@ -117,7 +138,11 @@ Prérequis transverses à la phase N2 :
 
 ---
 
-## Dette technique connue
+## Dette technique connue — 🛑 GELÉE (non traitée à la clôture)
+
+> Dette **figée avec le projet** : rien ci-dessous ne sera traité. Conservée pour un
+> éventuel repreneur. S'y ajoute, non listée à l'origine : **6 vulnérabilités `npm audit`**
+> (2 high / 1 critical) dans l'arbre de dépendances frontend.
 
 À traiter au bon moment, sans urgence à ce stade :
 
